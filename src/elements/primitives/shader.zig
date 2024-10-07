@@ -1,0 +1,91 @@
+const c = @cImport({
+    @cInclude("glad/glad.h");
+    @cInclude("GLFW/glfw3.h");
+});
+const std = @import("std");
+
+const Allocator = std.mem.Allocator;
+const panic = std.debug.panic;
+
+const Self = @This();
+
+program: c_uint,
+
+// Some default objects.
+vbo: c_uint,
+vao: c_uint,
+ebo: c_uint,
+has_default_objects: bool,
+
+pub fn init(
+    vertex_shader_source: []const u8,
+    fragment_shader_source: []const u8,
+    attach_default_objects: bool
+) !Self {
+    var success: c_int = undefined;
+    const info_log: [*c]u8 = undefined;  // Allocate 512 chars.
+
+    const vertex_shader = c.glCreateShader(c.GL_VERTEX_SHADER);
+    c.glShaderSource(vertex_shader, 1, @ptrCast(&vertex_shader_source), null);
+    c.glCompileShader(vertex_shader);
+    defer c.glDeleteShader(vertex_shader);
+
+    c.glGetShaderiv(vertex_shader, c.GL_COMPILE_STATUS, &success);
+    if (success == c.GL_FALSE) {
+        c.glGetShaderInfoLog(vertex_shader, 512, null, info_log);
+        panic("Crashed: Error compiling vertex shader\n", .{});
+    }
+
+    const fragment_shader = c.glCreateShader(c.GL_FRAGMENT_SHADER);
+    c.glShaderSource(fragment_shader, 1, @ptrCast(&fragment_shader_source), null);
+    c.glCompileShader(fragment_shader);
+    defer c.glDeleteShader(fragment_shader);
+
+    c.glGetShaderiv(fragment_shader, c.GL_COMPILE_STATUS, &success);
+    if (success == c.GL_FALSE) {
+        c.glGetShaderInfoLog(fragment_shader, 512, null, info_log);
+        panic("Crashed: Error compiling fragment shader\n", .{});
+    }
+
+    const shader_program = c.glCreateProgram();
+    c.glAttachShader(shader_program, vertex_shader);
+    c.glAttachShader(shader_program, fragment_shader);
+    c.glLinkProgram(shader_program);
+
+    c.glGetProgramiv(shader_program, c.GL_LINK_STATUS, &success);
+    if (success == c.GL_FALSE) {
+        c.glGetProgramInfoLog(shader_program, 512, null, info_log);
+        panic("Crashed: Error compiling shader program\n", .{});
+    }
+
+    var vao: c_uint = undefined;
+    var vbo: c_uint = undefined;
+    var ebo: c_uint = undefined;
+
+    if (attach_default_objects) {
+        c.glGenVertexArrays(1, &vao);
+        c.glGenBuffers(1, &vbo);
+        c.glGenBuffers(1, &ebo);
+    }
+
+    return .{
+        .program = shader_program,
+        .has_default_objects = attach_default_objects,
+        .vao = vao,
+        .vbo = vbo,
+        .ebo = ebo
+    };
+}
+
+pub fn deinit(self: *Self) void {
+    c.glDeleteProgram(self.program);
+}
+
+pub fn use(self: *Self) void {
+    c.glUseProgram(self.program);
+}
+
+pub fn uniform(self: *Self, location: []const u8) c_int {
+    self.use();
+    return c.glGetUniformLocation(self.program, @ptrCast(location));
+}
