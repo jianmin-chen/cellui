@@ -1,4 +1,5 @@
 const std = @import("std");
+const math = @import("math");
 
 const Self = @This();
 
@@ -41,4 +42,13 @@ pub fn parse(_color: []const u8) !Self {
 pub fn process(color: []const u8) !ColorPrimitive {
     const self = try parse(color);
     return self.repr;
+}
+
+pub fn random() !ColorPrimitive {
+    return [4]f32{
+        try math.randomFloat(0, 1),
+        try math.randomFloat(0, 1),
+        try math.randomFloat(0, 1),
+        1.0
+    };
 }

@@ -5,15 +5,15 @@ const c = @cImport({
 const std = @import("std");
 pub const color = @import("color");
 const elements = @import("elements/root.zig");
-const element = @import("elements/element.zig");
 const math = @import("math");
 
 const Allocator = std.mem.Allocator;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
 const panic = std.debug.panic;
 
-const Element = element.Element;
-const Rectangle = element.Rectangle;
+const Element = elements.Element;
+const Node = elements.Node;
+const Rectangle = elements.Rectangle;
 
 const Matrix = math.Matrix;
 const Matrix4x4 = Matrix.Matrix4x4;
@@ -38,8 +38,7 @@ pub const Options = struct {
 debug: bool = false,
 fps: isize = 0,
 
-gpa: GeneralPurposeAllocator,
-default_allocator: Allocator = undefined,
+allocator: Allocator,
 window: ?*c.GLFWwindow,
 
 width: usize,
@@ -47,12 +46,14 @@ height: usize,
 
 projection: Matrix4x4,
 
+root: *Node = undefined,
+
 fn error_callback(err: c_int, description: [*c]const u8) callconv(.C) void {
     _ = err;
     panic("Crashed: {s}\n", .{description});
 }
 
-pub fn setup(options: Options, callback: Callback) !Self {
+pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
     _ = c.glfwSetErrorCallback(error_callback);
 
     if (c.glfwInit() == c.GL_FALSE) return error.InitializationError;
@@ -84,7 +85,7 @@ pub fn setup(options: Options, callback: Callback) !Self {
     c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
     var self: Self = .{
-        .gpa = GeneralPurposeAllocator{},
+        .allocator = allocator,
         .window = window,
 
         .width = @intCast(options.initial_width),
@@ -101,9 +102,22 @@ pub fn setup(options: Options, callback: Callback) !Self {
 
         .debug = options.debug
     };
-    self.default_allocator = self.gpa.allocator();
 
-    try elements.setup(self.default_allocator, self.width, self.height);
+    try elements.setup(allocator, self.width, self.height);
+
+    self.root = try Node.wrap(
+        allocator,
+        try Element(Rectangle).init(
+            allocator,
+            .{
+                .top = 0.0,
+                .left = 0.0,
+                .width = @floatFromInt(self.width),
+                .height = @floatFromInt(self.height),
+                .color = try color.process("#000")
+            }
+        )
+    );
 
     try callback(&self);
 
@@ -111,25 +125,13 @@ pub fn setup(options: Options, callback: Callback) !Self {
 }
 
 pub fn deinit(self: *Self) void {
+    self.root.deinit();
     elements.cleanup();
-    std.debug.assert(self.gpa.deinit() == .ok);
+
+    c.glfwTerminate();
 }
 
 pub fn loop(self: *Self, callback: Callback) !void {
-    const allocator = self.gpa.allocator();
-
-    var rectangle = try Element(Rectangle).init(
-        allocator,
-        .{
-            .top = 50.0,
-            .left = 50.0,
-            .width = 25.0,
-            .height = 25.0,
-            .color = try color.process("#fff")
-        }
-    );
-    defer rectangle.deinit();
-
     var prev = c.glfwGetTime();
     var frames: isize = 0;
     while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
@@ -138,7 +140,7 @@ pub fn loop(self: *Self, callback: Callback) !void {
 
         self.processInput();
         try callback(self);
-        try rectangle.render();
+        try self.render();
 
         if (self.debug) {
             const timestamp = c.glfwGetTime();
@@ -160,7 +162,13 @@ fn processInput(self: *Self) void {
 }
 
 pub fn render(self: *Self) !void {
-    _ = self;
+    // Most of the work is made out to external calls.
+    try self.root.render();
+    var child = self.root.last_child;
+    while (child) |node| {
+        try node.render();
+        child = node.previous;
+    }
 }
 
 pub fn add(self: *Self) !void {

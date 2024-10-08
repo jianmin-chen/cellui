@@ -20,13 +20,19 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const color = b.addModule("color", .{
-        .root_source_file = b.path("src/color.zig"),
+    const math = b.addModule("math", .{
+        .root_source_file = b.path("src/math/root.zig"),
         .target = target
     });
 
-    const math = b.addModule("math", .{
-        .root_source_file = b.path("src/math/root.zig"),
+    const color = b.addModule("color", .{
+        .root_source_file = b.path("src/utils/color.zig"),
+        .target = target
+    });
+    color.addImport("math", math);
+
+    const tree = b.addModule("tree", .{
+        .root_source_file = b.path("src/utils/tree.zig"),
         .target = target
     });
 
@@ -38,6 +44,7 @@ pub fn build(b: *Build) !void {
     });
 
     main.root_module.addImport("color", color);
+    main.root_module.addImport("tree", tree);
     main.root_module.addImport("math", math);
     attachDependencies(b, main);
     b.installArtifact(main);
