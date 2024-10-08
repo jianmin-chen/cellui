@@ -10,7 +10,7 @@ const Allocator = std.mem.Allocator;
 
 const Self = @This();
 
-pub const vertex: []const u8 =
+pub const vertex =
     \\#version 330 core
     \\
     \\layout (location = 0) in vec2 pos;
@@ -22,7 +22,7 @@ pub const vertex: []const u8 =
     \\}
 ;
 
-pub const fragment: []const u8 =
+pub const fragment =
     \\#version 330 core
     \\
     \\out vec4 color;
@@ -39,10 +39,18 @@ const indices = [_]c.GLint{
     3, 2, 1
 };
 
+pub const Styles = struct {
+    top: ?f32 = null,
+    left: ?f32 = null,
+    width: ?f32 = null,
+    height: ?f32 = null,
+    color: ?Color = null
+};
+
 pub var shader: Shader = undefined;
 
 pub fn init(_: Allocator) !void {
-    shader = try Shader.init(vertex, fragment);
+    shader = try Shader.init(vertex, fragment, true);
 
     c.glBindVertexArray(shader.vao);
 
@@ -60,19 +68,25 @@ pub fn deinit() void {
     shader.deinit();
 }
 
-pub fn render(styles: anytype) !void {
+pub fn render(styles: Styles) !void {
     shader.use();
 
-    c.glUniform3fv(shader.uniform("box_color"), 1, @ptrCast(&styles.color[0]));
+    const color = styles.color orelse unreachable;
+    const top = styles.top orelse unreachable;
+    const left = styles.left orelse unreachable;
+    const width = styles.width orelse unreachable;
+    const height = styles.height orelse unreachable;
+
+    c.glUniform3fv(shader.uniform("box_color"), 1, @ptrCast(&color[0]));
 
     const vertices = [_]c.GLfloat{
-        styles.x, styles.y + styles.height,
-        styles.x, styles.y,
-        styles.x + styles.width, styles.y,
-        styles.x + styles.width, styles.y + styles.height
+        left, top + height,
+        left, top,
+        left + width, top,
+        left + width, top + height
     };
 
-    c.glBindBuffer(shader.vao);
+    c.glBindVertexArray(shader.vao);
 
     c.glBindBuffer(c.GL_ARRAY_BUFFER, shader.vbo);
     c.glBufferSubData(c.GL_ARRAY_BUFFER, 0, @sizeOf(c.GLfloat) * vertices.len, @ptrCast(&vertices[0]));

@@ -3,11 +3,17 @@ const c = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
-const math = @import("math/root.zig");
+pub const color = @import("color");
+const elements = @import("elements/root.zig");
+const element = @import("elements/element.zig");
+const math = @import("math");
 
 const Allocator = std.mem.Allocator;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
 const panic = std.debug.panic;
+
+const Element = element.Element;
+const Rectangle = element.Rectangle;
 
 const Matrix = math.Matrix;
 const Matrix4x4 = Matrix.Matrix4x4;
@@ -33,7 +39,7 @@ debug: bool = false,
 fps: isize = 0,
 
 gpa: GeneralPurposeAllocator,
-default_allocator: Allocator,
+default_allocator: Allocator = undefined,
 window: ?*c.GLFWwindow,
 
 width: usize,
@@ -97,16 +103,33 @@ pub fn setup(options: Options, callback: Callback) !Self {
     };
     self.default_allocator = self.gpa.allocator();
 
+    try elements.setup(self.default_allocator, self.width, self.height);
+
     try callback(&self);
 
     return self;
 }
 
 pub fn deinit(self: *Self) void {
+    elements.cleanup();
     std.debug.assert(self.gpa.deinit() == .ok);
 }
 
 pub fn loop(self: *Self, callback: Callback) !void {
+    const allocator = self.gpa.allocator();
+
+    var rectangle = try Element(Rectangle).init(
+        allocator,
+        .{
+            .top = 50.0,
+            .left = 50.0,
+            .width = 25.0,
+            .height = 25.0,
+            .color = try color.process("#fff")
+        }
+    );
+    defer rectangle.deinit();
+
     var prev = c.glfwGetTime();
     var frames: isize = 0;
     while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
@@ -115,6 +138,7 @@ pub fn loop(self: *Self, callback: Callback) !void {
 
         self.processInput();
         try callback(self);
+        try rectangle.render();
 
         if (self.debug) {
             const timestamp = c.glfwGetTime();
@@ -132,5 +156,13 @@ pub fn loop(self: *Self, callback: Callback) !void {
 }
 
 fn processInput(self: *Self) void {
+    _ = self;
+}
+
+pub fn render(self: *Self) !void {
+    _ = self;
+}
+
+pub fn add(self: *Self) !void {
     _ = self;
 }

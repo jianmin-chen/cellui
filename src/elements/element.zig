@@ -4,25 +4,26 @@ pub const Rectangle = @import("primitives/rectangle.zig");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const Self = @This();
+pub fn Element(comptime T: type) type {
+    return struct {
+        allocator: Allocator,
+        styles: T.Styles,
 
-allocator: Allocator,
-children: ArrayList(*Self),
+        pub fn init(allocator: Allocator, styles: T.Styles) !*Element(T) {
+            const self = try allocator.create(Element(T));
+            self.* = .{
+                .allocator = allocator,
+                .styles = styles
+            };
+            return self;
+        }
 
-pub fn create(
-    allocator: Allocator,
-    kind: anytype,
-    styles: anytype,
-) !*Self {
-    const self = try allocator.create(Self);
-    self.* = .{
-        .allocator = allocator,
-    }
-}
+        pub fn render(self: *Element(T)) !void {
+            try T.render(self.styles);
+        }
 
-pub fn deinit(self: *Self) void {
-    for (self.children.items) |child| {
-        child.deinit();
-    }
-    self.children.deinit();
+        pub fn deinit(self: *Element(T)) void {
+            self.allocator.destroy(self);
+        }
+    };
 }
