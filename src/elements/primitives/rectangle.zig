@@ -49,7 +49,8 @@ pub const Styles = struct {
     left: ?f32 = null,
     width: ?f32 = null,
     height: ?f32 = null,
-    color: ?Color = null
+    color: ?Color = null,
+    border_top_left_color: ?Color = null,
 };
 
 pub var shader: Shader = undefined;

@@ -13,6 +13,7 @@ const panic = std.debug.panic;
 
 const Element = elements.Element;
 const Node = elements.Node;
+const Image = elements.Image;
 const Rectangle = elements.Rectangle;
 
 const Matrix = math.Matrix;
@@ -84,6 +85,9 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
     c.glEnable(c.GL_BLEND);
     c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
+    const width: f32 = @floatFromInt(options.initial_width);
+    const height: f32 = @floatFromInt(options.initial_height);
+
     var self: Self = .{
         .allocator = allocator,
         .window = window,
@@ -94,8 +98,8 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
         .projection = switch (options.projection) {
             .ortho => Matrix.ortho(
                 0,
-                @floatFromInt(options.initial_width),
-                @floatFromInt(options.initial_height),
+                width,
+                height,
                 0
             )
         },
@@ -103,7 +107,7 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
         .debug = options.debug
     };
 
-    try elements.setup(allocator, self.width, self.height);
+    try elements.setup(allocator, self.projection);
 
     self.root = try Node.wrap(
         allocator,
@@ -112,8 +116,8 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
             .{
                 .top = 0.0,
                 .left = 0.0,
-                .width = @floatFromInt(self.width),
-                .height = @floatFromInt(self.height),
+                .width = width,
+                .height = height,
                 .color = try color.process("#000")
             }
         )
@@ -164,6 +168,7 @@ fn processInput(self: *Self) void {
 
 pub fn render(_: *Self) !void {
     // Most of the work is made out to external calls.
+    try Image.render();
     try Rectangle.render();
 }
 

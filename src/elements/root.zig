@@ -3,8 +3,9 @@ const c = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
-const math = @import("math");
+const Matrix4x4 = @import("math").Matrix4x4;
 
+pub const Image = @import("primitives/image.zig");
 pub const Rectangle = @import("primitives/rectangle.zig");
 
 const Allocator = std.mem.Allocator;
@@ -128,20 +129,21 @@ pub const Node = struct {
     }
 };
 
-pub fn setup(allocator: Allocator, width: usize, height: usize) !void {
+pub fn setup(allocator: Allocator, projection: Matrix4x4) !void {
+    try Image.init(allocator);
     try Rectangle.init(allocator);
-    viewport(width, height);
+    viewport(projection);
 }
 
-pub fn viewport(width: usize, height: usize) void {
-    const projection = math.Matrix.ortho(
-        0,
-        @floatFromInt(width),
-        @floatFromInt(height),
-        0
-    );
+pub fn viewport(projection: Matrix4x4) void {
     c.glUniformMatrix4fv(
         Rectangle.shader.uniform("projection"),
+        1,
+        c.GL_FALSE,
+        @ptrCast(&projection)
+    );
+    c.glUniformMatrix4fv(
+        Image.shader.uniform("projection"),
         1,
         c.GL_FALSE,
         @ptrCast(&projection)
@@ -149,5 +151,6 @@ pub fn viewport(width: usize, height: usize) void {
 }
 
 pub fn cleanup() void {
+    Image.deinit();
     Rectangle.deinit();
 }

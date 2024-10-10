@@ -13,10 +13,23 @@ fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
         .file = b.path("./deps/glad.c"),
         .flags = &.{}
     });
+    exe.addCSourceFile(.{
+        .file = b.path("./deps/stb.c"),
+        .flags = &.{}
+    });
 
     exe.linkFramework("OpenGL");
     exe.linkSystemLibrary("glfw");
     exe.linkSystemLibrary("freetype");
+}
+
+fn attachDependenciesToModule(b: *Build, module: *Build.Module) void {
+    module.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/" });
+    module.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib" });
+
+    module.addIncludePath(b.path("./deps"));
+
+    module.linkSystemLibrary("freetype", .{});
 }
 
 pub fn build(b: *Build) !void {
@@ -28,16 +41,17 @@ pub fn build(b: *Build) !void {
         .target = target
     });
 
+    const font = b.addModule("font", .{
+        .root_source_file = b.path("src/font/root.zig"),
+        .target = target
+    });
+    attachDependenciesToModule(b, font);
+
     const color = b.addModule("color", .{
         .root_source_file = b.path("src/utils/color.zig"),
         .target = target
     });
     color.addImport("math", math);
-
-    const tree = b.addModule("tree", .{
-        .root_source_file = b.path("src/utils/tree.zig"),
-        .target = target
-    });
 
     const main = b.addExecutable(.{
         .name = "cellui",
@@ -46,9 +60,9 @@ pub fn build(b: *Build) !void {
         .optimize = optimize
     });
 
-    main.root_module.addImport("color", color);
-    main.root_module.addImport("tree", tree);
     main.root_module.addImport("math", math);
+    main.root_module.addImport("font", font);
+    main.root_module.addImport("color", color);
     attachDependencies(b, main);
     b.installArtifact(main);
 
