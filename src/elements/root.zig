@@ -28,8 +28,8 @@ pub fn Element(comptime T: type) type {
             self.allocator.destroy(self);
         }
 
-        pub fn render(self: *Element(T)) !void {
-            try T.render(self.styles);
+        pub fn paint(self: *Element(T)) !void {
+            try T.paint(self.styles);
         }
     };
 }
@@ -50,31 +50,26 @@ pub const Node = struct {
 
     const VTable = struct {
         deinit: *const fn (ptr: *anyopaque) void,
-        render: *const fn (ptr: *anyopaque) anyerror!void
+        paint: *const fn (ptr: *anyopaque) anyerror!void
     };
 
     const Self = @This();
 
     pub fn deinit(self: *Self) void {
-        self.vtable.deinit(self.value);
-
-        if (self.next) |next| {
-            next.deinit();
-        }
-
         if (self.last_child) |last_child| {
-            var child: ?*Node = last_child;
-            while (child) |node| {
-                child = node.previous;
-                node.deinit();
-            }
+            last_child.deinit();
         }
 
+        if (self.previous) |node| {
+            node.deinit();
+        }
+
+        self.vtable.deinit(self.value);
         self.allocator.destroy(self);
     }
 
-    pub fn render(self: *Self) anyerror!void {
-        try self.vtable.render(self.value);
+    pub fn paint(self: *Self) !void {
+        try self.vtable.paint(self.value);
     }
 
     pub fn wrap(allocator: Allocator, value: anytype) !*Self {
@@ -93,9 +88,9 @@ pub const Node = struct {
                 self.deinit();
             }
 
-            fn render(ptr: *anyopaque) anyerror!void {
+            fn paint(ptr: *anyopaque) anyerror!void {
                 const self: Ptr align(alignment) = @ptrCast(@alignCast(ptr));
-                try self.render();
+                try self.paint();
             }
         };
 
@@ -105,7 +100,7 @@ pub const Node = struct {
             .value = value,
             .vtable = &.{
                 .deinit = impl.deinit,
-                .render = impl.render
+                .paint = impl.paint
             }
         };
         return wrapper;
@@ -113,6 +108,7 @@ pub const Node = struct {
 
     pub fn appendChild(self: *Self, child: anytype) !*Node {
         var node = try Self.wrap(self.allocator, child);
+        try node.paint();
         node.parent = self;
 
         if (self.first_child == null) {

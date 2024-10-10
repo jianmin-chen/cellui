@@ -134,10 +134,11 @@ pub fn deinit(self: *Self) void {
 pub fn loop(self: *Self, callback: Callback) !void {
     var prev = c.glfwGetTime();
     var frames: isize = 0;
-    while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
-        c.glClearColor(0.0, 0.0, 0.0, 1.0);
-        c.glClear(c.GL_COLOR_BUFFER_BIT);
 
+    c.glClearColor(0.0, 0.0, 0.0, 1.0);
+    c.glClear(c.GL_COLOR_BUFFER_BIT);
+
+    while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
         self.processInput();
         try callback(self);
         try self.render();
@@ -161,14 +162,9 @@ fn processInput(self: *Self) void {
     _ = self;
 }
 
-pub fn render(self: *Self) !void {
+pub fn render(_: *Self) !void {
     // Most of the work is made out to external calls.
-    try self.root.render();
-    var child = self.root.last_child;
-    while (child) |node| {
-        try node.render();
-        child = node.previous;
-    }
+    try Rectangle.render();
 }
 
 pub fn add(self: *Self) !void {

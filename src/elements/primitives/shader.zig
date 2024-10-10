@@ -11,16 +11,9 @@ const Self = @This();
 
 program: c_uint,
 
-// Some default objects.
-vbo: c_uint,
-vao: c_uint,
-ebo: c_uint,
-has_default_objects: bool,
-
 pub fn init(
     vertex_shader_source: []const u8,
     fragment_shader_source: []const u8,
-    attach_default_objects: bool
 ) !Self {
     var success: c_int = undefined;
     const info_log: [*c]u8 = undefined;  // Allocate 512 chars.
@@ -58,23 +51,7 @@ pub fn init(
         panic("Crashed: Error compiling shader program\n", .{});
     }
 
-    var vao: c_uint = undefined;
-    var vbo: c_uint = undefined;
-    var ebo: c_uint = undefined;
-
-    if (attach_default_objects) {
-        c.glGenVertexArrays(1, &vao);
-        c.glGenBuffers(1, &vbo);
-        c.glGenBuffers(1, &ebo);
-    }
-
-    return .{
-        .program = shader_program,
-        .has_default_objects = attach_default_objects,
-        .vao = vao,
-        .vbo = vbo,
-        .ebo = ebo
-    };
+    return .{ .program = shader_program };
 }
 
 pub fn deinit(self: *Self) void {

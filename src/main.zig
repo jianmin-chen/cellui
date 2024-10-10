@@ -28,23 +28,30 @@ pub fn main() !void {
 }
 
 fn init(app: *App) anyerror!void {
-    _ = app;
-}
-
-fn loop(app: *App) anyerror!void {
-    std.debug.print("{any}\n", .{app.fps});
-    if (app.root.len < 100) {
+    for (0..8) |_| {
         _ = try app.root.appendChild(
             try Element(Rectangle).init(
                 app.allocator,
                 .{
-                    .top = @floatFromInt(try math.random(usize, 0, app.height)),
-                    .left = @floatFromInt(try math.random(usize, 0, app.width)),
-                    .width = @floatFromInt(try math.random(usize, 25, 200)),
-                    .height = @floatFromInt(try math.random(usize, 25, 200)),
+                    .top = @floatFromInt(
+                        try math.random(usize, 0, app.height)
+                    ),
+                    .left = @floatFromInt(
+                        try math.random(usize, 0, app.width)
+                    ),
+                    .width = @floatFromInt(
+                        try math.random(usize, 25, 200)
+                    ),
+                    .height = @floatFromInt(
+                        try math.random(usize, 25, 200)
+                    ),
                     .color = try color.random()
                 }
             )
         );
     }
+}
+
+fn loop(app: *App) anyerror!void {
+    std.debug.print("fps: {any}\n", .{app.fps});
 }

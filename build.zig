@@ -5,6 +5,8 @@ const Build = std.Build;
 fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
     exe.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
     exe.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
+    exe.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/" });
+    exe.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib" });
 
     exe.addIncludePath(b.path("./deps"));
     exe.addCSourceFile(.{
@@ -14,6 +16,7 @@ fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
 
     exe.linkFramework("OpenGL");
     exe.linkSystemLibrary("glfw");
+    exe.linkSystemLibrary("freetype");
 }
 
 pub fn build(b: *Build) !void {
