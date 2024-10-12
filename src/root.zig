@@ -11,6 +11,8 @@ const Allocator = std.mem.Allocator;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
 const panic = std.debug.panic;
 
+const Color = color.ColorPrimitive;
+
 const Element = elements.Element;
 const Node = elements.Node;
 const Image = elements.Image;
@@ -29,6 +31,7 @@ pub const Callback = fn(self: *Self) anyerror!void;
 pub const Options = struct {
     initial_width: c_int = 800,
     initial_height: c_int = 600,
+    background: []const u8 = "#000",
     title: ?[]const u8,
 
     projection: Projection = .ortho,
@@ -118,10 +121,11 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
                 .left = 0.0,
                 .width = width,
                 .height = height,
-                .color = try color.process("#000")
+                .background_color = try color.process(options.background)
             }
         )
     );
+    try self.root.paint();
 
     try callback(&self);
 
@@ -159,6 +163,7 @@ pub fn loop(self: *Self, callback: Callback) !void {
 
         c.glfwSwapBuffers(@ptrCast(self.window));
         c.glfwPollEvents();
+        // c.glfwWaitEvents();
     }
 }
 

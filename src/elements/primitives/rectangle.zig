@@ -3,6 +3,7 @@ const c = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const style = @import("style");
 const Color = @import("color").ColorPrimitive;
 const Shader = @import("shader.zig");
 
@@ -39,19 +40,23 @@ pub const fragment =
     \\
     \\out vec4 color;
     \\
+    \\float rounded(vec2 p, vec2 b, vec4 r) {
+    \\  // r = { top-right, bottom-right, top-left, bottom-left }
+    \\  r.xy = (p.x > 0.0) ? r.xy : r.zw;
+    \\  r.x = (p.y > 0.0) ? r.x : r.y;
+    \\  vec2 sl = abs(p) - b + r.x;
+    \\  return min(max(sl.x, sl.y), 0.0) + length(max(sl, 0.0)) - r.x;
+    \\}
+    \\
     \\void main() {
     \\  color = vec4(box_color, 1.0);
     \\}
 ;
 
-pub const Styles = struct {
-    top: ?f32 = null,
-    left: ?f32 = null,
-    width: ?f32 = null,
-    height: ?f32 = null,
-    color: ?Color = null,
-    border_top_left_color: ?Color = null,
-};
+pub const Styles = style.merge(
+    style.ViewStyles,
+    struct {}
+);
 
 pub var shader: Shader = undefined;
 pub var vao: c_uint = undefined;
@@ -107,6 +112,7 @@ pub fn init(_: Allocator) !void {
         color_offset
     );
     c.glEnableVertexAttribArray(1);
+    c.glVertexAttribDivisor(1, 3);
 }
 
 pub fn deinit() void {
@@ -121,17 +127,17 @@ pub fn paint(styles: Styles) !void {
 
     c.glBindVertexArray(vao);
 
-    const color = styles.color orelse unreachable;
+    const background_color = styles.background_color orelse unreachable;
     const top = styles.top orelse unreachable;
     const left = styles.left orelse unreachable;
     const width = styles.width orelse unreachable;
     const height = styles.height orelse unreachable;
 
     const vertices = [_]c.GLfloat{
-        left, top + height, color[0], color[1], color[2],
-        left, top, color[0], color[1], color[2],
-        left + width, top, color[0], color[1], color[2],
-        left + width, top + height, color[0], color[1], color[2]
+        left, top + height, background_color[0], background_color[1], background_color[2],
+        left, top, background_color[0], background_color[1], background_color[2],
+        left + width, top, background_color[0], background_color[1], background_color[2],
+        left + width, top + height, background_color[0], background_color[1], background_color[2]
     };
 
     c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);

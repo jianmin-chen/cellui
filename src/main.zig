@@ -22,61 +22,62 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    try font.setup();
-    defer font.cleanup();
+    // try font.setup();
+    // defer font.cleanup();
 
-    var test_font = try Font.from(allocator, "test.ttf", .{
-        .font_size = 72
-    });
-    defer test_font.deinit();
+    // var test_font = try Font.from(allocator, "test.ttf", .{
+    //     .font_size = 72
+    // });
+    // defer test_font.deinit();
 
-    var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
-    defer allocator.free(png);
-    for (0..test_font.atlas_width * test_font.atlas_height) |i| {
-        png[i * 4 + 0] = test_font.atlas[i];
-        png[i * 4 + 1] = test_font.atlas[i];
-        png[i * 4 + 2] = test_font.atlas[i];
-        png[i * 4 + 3] = 0xff;
-    }
-    _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
+    // var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
+    // defer allocator.free(png);
+    // for (0..test_font.atlas_width * test_font.atlas_height) |i| {
+    //     png[i * 4 + 0] = test_font.atlas[i];
+    //     png[i * 4 + 1] = test_font.atlas[i];
+    //     png[i * 4 + 2] = test_font.atlas[i];
+    //     png[i * 4 + 3] = 0xff;
+    // }
+    // _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
 
-    // var app = try cellui.setup(allocator, .{
-    //     .initial_width = 1300,
-    //     .initial_height = 1200,
-    //     .title = "cellui",
+    var app = try cellui.setup(allocator, .{
+        .initial_width = 800,
+        .initial_height = 600,
+        .title = "cellui",
+        .background = "#fff",
 
-    //     .debug = true
-    // }, init);
-    // defer app.deinit();
+        .debug = true
+    }, init);
+    defer app.deinit();
 
-    // try app.loop(loop);
+    try app.loop(loop);
 }
 
 fn init(app: *App) anyerror!void {
-    _ = try app.root.appendChild(
-        try Element(Image).init(
-            app.allocator,
-            .{
-                .top = 0,
-                .left = 0,
-                .width = 1296,
-                .height = 884,
-                .src = "test.png"
-            }
-        )
-    );
     // _ = try app.root.appendChild(
-    //     try Element(Rectangle).init(
+    //     try Element(Image).init(
     //         app.allocator,
     //         .{
-    //             .top = 25,
-    //             .left = 300,
-    //             .width = 475,
-    //             .height = 550,
-    //             .color = try color.process("#23272e")
+    //             .top = 0,
+    //             .left = 0,
+    //             .width = 1296,
+    //             .height = 884,
+    //             .src = "test.png"
     //         }
     //     )
     // );
+    _ = try app.root.appendChild(
+        try Element(Rectangle).init(
+            app.allocator,
+            .{
+                .top = 25,
+                .left = 150,
+                .width = 500,
+                .height = 550,
+                .background_color = try color.process("#23272e")
+            }
+        )
+    );
 }
 
 fn loop(app: *App) anyerror!void {
