@@ -35,6 +35,7 @@ pub fn parse(_color: []const u8) !Self {
             if (chunk.len == 1) repr = (repr << 4) | repr;
             self.repr[i] = @as(f32, @floatFromInt(repr)) / 255.0;
         }
+    } else {
     }
     return self;
 }

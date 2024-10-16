@@ -27,6 +27,7 @@ pub const Character = struct {
 pub const Font = struct {
     allocator: Allocator,
     face: c.FT_Face = undefined,
+    sdf: bool,
     font_size: usize,
     range: [2]usize,
     num_glyphs: usize,
@@ -43,12 +44,14 @@ pub const Font = struct {
         path: []const u8,
         optional_args: struct {
             font_size: c_uint = 14,
+            sdf: bool = false,
             glyph_range: [2]usize = [2]usize{65, 127}
         }
     ) !Self {
         var self: Self = .{
             .allocator = allocator,
-            .font_size = @intCast(optional_args.font_size),
+            .sdf = optional_args.sdf,
+            .font_size = if (optional_args.sdf) 72 else @intCast(optional_args.font_size),
             .range = optional_args.glyph_range,
             .num_glyphs = optional_args.glyph_range[1] - optional_args.glyph_range[0],
             .characters = AutoHashMap(usize, Character).init(allocator)
@@ -57,7 +60,8 @@ pub const Font = struct {
         if (c.FT_New_Face(ft_library, @ptrCast(path), 0, &self.face) != c.GL_FALSE)
             return error.FaceLoadError;
 
-        _ = c.FT_Set_Pixel_Sizes(self.face, 0, optional_args.font_size);
+        const font_size: c_uint = @intCast(self.font_size);
+        _ = c.FT_Set_Pixel_Sizes(self.face, 0, font_size);
 
         const face = self.face.*;
 
@@ -76,9 +80,13 @@ pub const Font = struct {
         var x: usize = 0;
         var y: usize = 0;
 
+        const slot = self.face.*.glyph;
+
         for (self.range[0]..self.range[1]) |i| {
             if (c.FT_Load_Char(self.face, i, c.FT_LOAD_RENDER) != c.GL_FALSE)
                 return error.GlyphLoadError;
+
+            _ = c.FT_Render_Glyph(slot, c.FT_RENDER_MODE_SDF);
 
             const glyph = self.face.*.glyph.*;
 
@@ -121,9 +129,6 @@ pub const Font = struct {
         self.characters.deinit();
     }
 };
-
-// This should eventually be the default option.
-pub const FontSDF = struct {};
 
 pub fn setup() !void {
     if (c.FT_Init_FreeType(&ft_library) != c.GL_FALSE)

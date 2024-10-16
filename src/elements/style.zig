@@ -19,6 +19,12 @@ pub const ViewStyles = struct {
     border_bottom_left_radius: ?f32 = 0,
     border_bottom_right_radius: ?f32 = 0,
 
+    border_color: ?[4]Color = null,
+    border_top_left_color: ?Color = null,
+    border_top_right_color: ?Color = null,
+    border_bottom_left_color: ?Color = null,
+    border_bottom_right_color: ?Color = null,
+
     margin: ?[4]f32 = null,
     margin_top: ?f32 = 0,
     margin_right: ?f32 = 0,
