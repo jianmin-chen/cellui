@@ -1,147 +1,84 @@
 const c = @cImport({
-    @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
+	@cInclude("glad/glad.h");
+	@cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const style = @import("style");
+const Color = @import("color").ColorPrimitive;
 const Shader = @import("shader.zig");
 
 const Allocator = std.mem.Allocator;
-const AutoHashMap = std.AutoHashMap;
 
 const Self = @This();
 
-const INDICES_SIZE = 6;
-const VERTEX_SIZE = 7;
-const VERTICES_SIZE = VERTEX_SIZE * 4;
-const MAX_TEXT_NODES = std.math.maxInt(c_int);
-const TEXT_BUFFER_SIZE = VERTICES_SIZE * MAX_TEXT_NODES;
+const VERTEX_SIZE = 2;
 
 pub const vertex =
-    \\#version 330 core
-    \\
-    \\layout (location = 0) in vec2 position;
-    \\layout (location = 1) in vec2 texcoords;
-    \\layout (location = 2) in vec3 color;
-    \\
-    \\out vec2 tex_coords;
-    \\out vec3 text_color;
-    \\
-    \\uniform mat4 projection;
-    \\
-    \\void main() {
-    \\  gl_Position = projection * vec4(position, 0.0, 1.0);
-    \\  tex_coords = texcoords;
-    \\  text_color = color;
-    \\}
+	\\#version 330 core
+	\\
+	\\layout (location = 0) in vec2 base;
+	\\layout (location = 1) in vec4 text;
+	\\layout (location = 2) in vec2 texcoords;
+	\\
+	\\out vec2 tex_coords;
+	\\
+	\\uniform mat4 projection;
+	\\
+	\\void main() {
+	\\	vec2 xy = base *
+	\\	gl_Position = projection * vec4(text.xy, 0.0, 1.0);
+	\\	tex_coords = texcoords;
+	\\}
 ;
 
 pub const fragment =
-    \\#version 330 core
-    \\
-    \\in vec2 tex_coords;
-    \\in vec3 text_color;
-    \\
-    \\out vec4 color;
-    \\
-    \\uniform sampler2D text;
-    \\
-    \\void main() {
-    \\  vec4 sampled = vec4(1.0, 1.0, 1.0, texture(text, tex_coords).r);
-    \\  color = vec4(text_color, 1.0) * sampled;
-    \\}
+	\\#version 330 core
+	\\
+	\\in vec2 tex_coords;
+	\\
+	\\out vec4 color;
+	\\
+	\\uniform sampler2D atlas;
+	\\
+	\\void main() {
+	\\	float alpha = texture(atlas, tex_coords).r;
 ;
 
-pub const Styles = struct {
-    top: ?f32 = null,
-    left: ?f32 = null,
-    width: ?f32 = null,
-    height: ?f32 = null,
-    color: ?Color = null
-};
+pub const Styles = style.merge(
+	style.ViewStyles,
+	struct {
+		color: ?Color = Color{ 0.0, 0.0, 0.0, 1.0 }
+	}
+);
 
 pub var shader: Shader = undefined;
 pub var vao: c_uint = undefined;
-pub var vbo: c_uint = undefined;
+pub var base_vbo: c_uint = undefined;
+pub var instanced_vbo: c_uint = undefined;
 pub var ebo: c_uint = undefined;
 
-pub var text_node_count: usize = 0;
-
 pub fn init(_: Allocator) !void {
-    shader = try Shader.init(vertex, fragment);
+	shader = try Shader.init(vertex, fragment);
 
-    c.glGenVertexArrays(1, &vao);
-    c.glGenBuffers(1, &vbo);
-    c.glGenBuffers(1, &ebo);
-
-    c.glBindVertexArray(vao);
-
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-    c.glBufferData(
-        c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * TEXT_BUFFER_SIZE,
-        null,
-        c.GL_DYNAMIC_DRAW
-    );
-
-    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
-    c.glBufferData(
-        c.GL_ELEMENT_ARRAY_BUFFER,
-        @sizeOf(c.GLint) * INDICES_SIZE * MAX_TEXT_NODES,
-        null,
-        c.GL_DYNAMIC_DRAW
-    );
-
-    // Position
-    c.glVertexAttribPointer(
-        0,
-        2,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        VERTEX_SIZE * @sizeOf(c.GLfloat),
-        null
-    );
-    c.glEnableVertexAttribArray(0);
-
-    // Texcoords
-    const texcoords_offset: *const anyopaque = @ptrFromInt(2 * @sizeOf(c.GLfloat));
-    c.glVertexAttribPointer(
-        1,
-        2,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        VERTEX_SIZE * @sizeOf(c.GLfloat),
-        texcoords_offset
-    );
-    c.glEnableVertexAttribArray(1);
-
-    // Color
-    const color_offset: *const anyopaque = @ptrFromInt(4 * @sizeOf(c.GLfloat));
-    c.glVertexAttribPointer(
-        2,
-        3,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        VERTEX_SIZE * @sizeOf(c.GLfloat),
-        color_offset
-    );
-    c.glEnableVertexAttribArray(2);
+	c.glGenVertexArrays(1, &vao);
+	c.glGenBuffers(1, &base_vbo);
 }
 
 pub fn deinit() void {
-    c.glDeleteVertexArrays(1, &vao);
-    shader.deinit();
+	c.glDeleteVertexArrays(1, &vao);
+	shader.deinit();
 }
 
 pub fn paint(styles: Styles) !void {
-    shader.use();
+	shader.use();
 
-    c.glBindVertexArray(vao);
+	c.glBindVertexArray(vao);
 
-    _ = styles;
+	_ = styles;
 }
 
 pub fn render() !void {
-    shader.use();
+	shader.use();
 
-    c.glBindVertexArray(vao);
+	c.glBindVertexArray(vao);
 }

@@ -3,7 +3,7 @@ const Color = @import("color").ColorPrimitive;
 
 const assert = std.debug.assert;
 
-pub const FlexDirection = enum {row, column};
+pub const FlexDirection = enum { row, column };
 
 pub const ViewStyles = struct {
     top: ?f32 = null,
@@ -18,6 +18,12 @@ pub const ViewStyles = struct {
     border_top_right_radius: ?f32 = 0,
     border_bottom_left_radius: ?f32 = 0,
     border_bottom_right_radius: ?f32 = 0,
+
+    border_width: ?[4]f32 = [4]f32{ 0, 0, 0, 0 },
+    border_top_width: ?f32 = 0,
+    border_right_width: ?f32 = 0,
+    border_bottom_width: ?f32 = 0,
+    border_left_width: ?f32 = 0,
 
     border_color: ?[4]Color = null,
     border_top_left_color: ?Color = null,
@@ -60,11 +66,11 @@ pub fn merge(comptime T: type, comptime U: type) type {
     assert(UInfo == .Struct);
 
     return @Type(.{
-        .Struct = .{
-            .layout = .auto,
-            .fields = TInfo.Struct.fields ++ UInfo.Struct.fields,
-            .decls = TInfo.Struct.decls ++ UInfo.Struct.decls,
-            .is_tuple = false
-        }
+    	.Struct = .{
+     		.layout = .auto,
+       		.fields = TInfo.Struct.fields ++ UInfo.Struct.fields,
+         	.decls = TInfo.Struct.decls ++ UInfo.Struct.decls,
+          	.is_tuple = false
+     	}
     });
 }

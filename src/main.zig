@@ -25,7 +25,9 @@ pub fn main() !void {
     try font.setup();
     defer font.cleanup();
 
-    var test_font = try Font.from(allocator, "test.ttf", .{});
+    var test_font = try Font.from(allocator, "test.ttf", .{
+    	.font_size = 72
+    });
     defer test_font.deinit();
 
     var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
@@ -42,7 +44,7 @@ pub fn main() !void {
         .initial_width = 800,
         .initial_height = 600,
         .title = "cellui",
-        .background = "#fff",
+        .background = "#667799",
 
         .debug = true
     }, init);
@@ -76,6 +78,18 @@ fn init(app: *App) anyerror!void {
             }
         )
     );
+    // _ = try app.root.appendChild(
+    // 	try Element(Text).init(
+    //  		app.allocator,
+    //    		.{
+    //      		.top = 25,
+    //        		.left = 25,
+    //          	.width = 50,
+    //           	.height = 50,
+    //            	.color =
+    //      	}
+    //  	)
+    // )
 }
 
 fn loop(app: *App) anyerror!void {

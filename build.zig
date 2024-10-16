@@ -10,12 +10,12 @@ fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
 
     exe.addIncludePath(b.path("./deps"));
     exe.addCSourceFile(.{
-        .file = b.path("./deps/glad.c"),
-        .flags = &.{}
+    	.file = b.path("./deps/glad.c"),
+     	.flags = &.{}
     });
     exe.addCSourceFile(.{
-        .file = b.path("./deps/stb.c"),
-        .flags = &.{}
+    	.file = b.path("./deps/stb.c"),
+     	.flags = &.{}
     });
 
     exe.linkFramework("OpenGL");
@@ -37,33 +37,32 @@ pub fn build(b: *Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     const math = b.addModule("math", .{
-        .root_source_file = b.path("src/math/root.zig"),
-        .target = target
+    	.root_source_file = b.path("src/math/root.zig"),
+     	.target = target
     });
 
     const color = b.addModule("color", .{
-        .root_source_file = b.path("src/utils/color.zig"),
-        .target = target
+    	.root_source_file = b.path("src/utils/color.zig"),
+     	.target = target
     });
     color.addImport("math", math);
 
     const style = b.addModule("style", .{
-        .root_source_file = b.path("src/elements/style.zig"),
-        .target = target
+    	.root_source_file = b.path("src/elements/style.zig"),
+     	.target = target
     });
     style.addImport("color", color);
 
     const font = b.addModule("font", .{
-        .root_source_file = b.path("src/font/root.zig"),
-        .target = target
+    	.root_source_file = b.path("src/font/root.zig"),
+     	.target = target
     });
     attachDependenciesToModule(b, font);
 
     const main = b.addExecutable(.{
-        .name = "cellui",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize
+    	.name = "cellui",
+     	.root_source_file = b.path("src/main.zig"),
+      	.target = target, .optimize = optimize
     });
 
     main.root_module.addImport("math", math);

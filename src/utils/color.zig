@@ -1,14 +1,41 @@
 const std = @import("std");
 const math = @import("math");
 
+const Allocator = std.mem.Allocator;
+const JSON = std.json.ArrayHashMap([]const u8);
+
 const Self = @This();
 
 pub const ColorPrimitive = [4]f32;
 
 pub const ColorKind = enum { primitive, hex };
 
+pub const defaults_location = "src/utils/color_defaults.json";
+pub var defaults: JSON = undefined;
+
 kind: ColorKind = .primitive,
 repr: ColorPrimitive = [4]f32{0.0, 0.0, 0.0, 1.0},
+
+pub fn setup(allocator: Allocator) !void {
+	const file= try std.fs.cwd().openFile(defaults_location, .{});
+	defer file.close();
+
+	const buf = try allocator.alloc(u8, try file.getEndPos());
+	_ = try file.readAll(buf);
+	defer allocator.free(buf);
+
+	std.debug.print("{any}\n", .{buf});
+
+	// defaults = try JSON.jsonParseFromValue(
+	// 	allocator,
+	// 	std.json.Value { .string = std.mem.trim(u8, buf, "\n") },
+	// 	.{ .allocate = .alloc_always }
+	// );
+}
+
+pub fn cleanup(allocator: Allocator) void {
+	defaults.deinit(allocator);
+}
 
 pub fn parse(_color: []const u8) !Self {
     var self: Self = .{};
@@ -36,6 +63,7 @@ pub fn parse(_color: []const u8) !Self {
             self.repr[i] = @as(f32, @floatFromInt(repr)) / 255.0;
         }
     } else {
+
     }
     return self;
 }

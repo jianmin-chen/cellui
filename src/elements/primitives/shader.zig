@@ -16,7 +16,7 @@ pub fn init(
     fragment_shader_source: []const u8,
 ) !Self {
     var success: c_int = undefined;
-    const info_log: [*c]u8 = undefined;  // Allocate 512 chars.
+    const info_log: [*c]u8 = undefined; // Allocate 512 chars.
 
     const vertex_shader = c.glCreateShader(c.GL_VERTEX_SHADER);
     c.glShaderSource(vertex_shader, 1, @ptrCast(&vertex_shader_source), null);
