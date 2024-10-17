@@ -4,6 +4,7 @@ const c = @cImport({
 });
 const std = @import("std");
 const style = @import("style");
+const util = @import("util");
 const Color = @import("color").ColorPrimitive;
 const Shader = @import("shader.zig");
 
@@ -89,6 +90,10 @@ pub const Styles = style.merge(
     style.ViewStyles,
     struct {}
 );
+
+pub const Attributes = struct {
+    styles: Styles
+};
 
 pub var shader: Shader = undefined;
 pub var vao: c_uint = undefined;
@@ -215,10 +220,12 @@ pub fn deinit() void {
     shader.deinit();
 }
 
-pub fn paint(styles: Styles) !void {
+pub fn paint(attributes: Attributes) !void {
     shader.use();
 
     c.glBindVertexArray(vao);
+
+    const styles = attributes.styles;
 
     const background_color = styles.background_color orelse unreachable;
 	const border_radii = styles.border_radius orelse unreachable;

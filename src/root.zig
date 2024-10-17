@@ -108,11 +108,13 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
      	try Element(Rectangle).init(
       		allocator,
         	.{
-         		.top = 0.0,
-           		.left = 0.0,
-             	.width = width,
-              	.height = height,
-               	.background_color = try color.process(options.background)
+                .styles = .{
+                    .top = 0.0,
+              		.left = 0.0,
+               	    .width = width,
+                   	.height = height,
+                    .background_color = try color.process(options.background)
+                }
          	}
       	)
     );

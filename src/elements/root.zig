@@ -15,13 +15,13 @@ const assert = std.debug.assert;
 pub fn Element(comptime T: type) type {
 	return struct {
 		allocator: Allocator,
-		styles: T.Styles,
+		attributes: T.Attributes,
 
-		pub fn init(allocator: Allocator, styles: T.Styles) !*Element(T) {
+		pub fn init(allocator: Allocator, attributes: T.Attributes) !*Element(T) {
 			const self = try allocator.create(Element(T));
 			self.* = .{
 				.allocator = allocator,
-				.styles = styles
+				.attributes = attributes
 			};
 			return self;
 		}
@@ -31,8 +31,7 @@ pub fn Element(comptime T: type) type {
 		}
 
 		pub fn paint(self: *Element(T)) !void {
-			style.resolve(&self.styles);
-		    try T.paint(self.styles);
+		    try T.paint(self.attributes);
 		}
 	};
 }

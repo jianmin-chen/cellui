@@ -59,13 +59,15 @@ fn init(app: *App) anyerror!void {
         try Element(Rectangle).init(
             app.allocator,
             .{
-                .top = 25,
-                .left = 150,
-                .width = 500,
-                .height = 550,
-                .background_color = try color.process("#fff000"),
-                .border_top_width = 2,
-                .border_top_color = try color.process("#fff")
+                .styles = .{
+                    .top = 25,
+                    .left = 150,
+                    .width = 500,
+                    .height = 550,
+                    .background_color = try color.process("#fff000"),
+                    .border_top_width = 2,
+                    .border_top_color = try color.process("#fff")
+                }
             }
         )
     );
@@ -73,19 +75,16 @@ fn init(app: *App) anyerror!void {
         try Element(Rectangle).init(
             app.allocator,
             .{
-                .top = 25,
-                .left = 25,
-                .width = 50,
-                .height = 50,
-                .background_color = try color.process("#00fff0"),
+                .styles = .{
+                    .top = 25,
+                    .left = 25,
+                    .width = 50,
+                    .height = 50,
+                    .background_color = try color.process("#00fff0")
+                }
             }
         )
     );
-
-    var styles: Image.Styles = .{
-        .top = 100,
-        .left = 100,
-    };
 
     var w: c_int = undefined;
     var h: c_int = undefined;
@@ -95,54 +94,24 @@ fn init(app: *App) anyerror!void {
     if (img == null) std.debug.panic("", .{});
     defer c.stbi_image_free(img);
 
-    styles.texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]);
-    styles.texture_width = w;
-    styles.texture_height = h;
-    styles.texture_channels = nr_channels;
-
     _ = try app.root.appendChild(
         try Element(Image).init(
             app.allocator,
-            styles
+            .{
+                .styles = .{
+                    .top = 100,
+                    .left = 100
+                },
+                .texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]),
+                .texture_width = w,
+                .texture_height = h,
+                .texture_channels = nr_channels
+            }
         )
     );
-
-    const copy: Image.Styles = .{
-        .texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]),
-        .texture_width = styles.texture_width,
-        .texture_height = styles.texture_height,
-        .texture_channels = styles.texture_channels,
-
-        .top = 100,
-        .left = 400,
-        .width = 600,
-        .height = 300
-    };
-
-    _ = try app.root.appendChild(
-        try Element(Image).init(
-            app.allocator,
-            copy
-        )
-    );
-
-    // _ = try app.root.appendChild(
-    // 	try Element(Text).init(
-    //  		app.allocator,
-    //    		.{
-    //      		.top = 25,
-    //        		.left = 25,
-    //          	.width = 50,
-    //           	.height = 50,
-    //      	},
-    //         .{
-    //             .text = "Hello, world!"
-    //         }
-    //  	)
-    // );
 }
 
 fn loop(app: *App) anyerror!void {
-    _ = app;
-    // std.debug.print("fps: {any}\n", .{app.fps});
+    // _ = app;
+    std.debug.print("fps: {any}\n", .{app.fps});
 }

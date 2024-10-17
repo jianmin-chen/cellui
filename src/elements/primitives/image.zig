@@ -112,13 +112,6 @@ pub const MipmapOption = enum {
 pub const Styles = style.merge(
     style.ViewStyles,
     struct {
-        texture: ?[]u8 = null,
-        texture_id: ?usize = null,
-        texture_level: ?c_int = 0,
-        texture_channels: ?isize = 3,
-        texture_width: ?isize = 0,
-        texture_height: ?isize = 0,
-
         wrap_horizontal: WrapOption = .clamp_to_border,
         wrap_vertical: WrapOption = .clamp_to_border,
         min_filter: MipmapOption = .linear,
@@ -130,6 +123,17 @@ pub const Styles = style.merge(
         sheight: ?f32 = null
     }
 );
+
+pub const Attributes = struct {
+    styles: Styles,
+
+    texture: ?[]u8 = null,
+    texture_id: ?usize = null,
+    texture_level: ?c_int = 0,
+    texture_channels: ?isize = 3,
+    texture_width: ?isize = 0,
+    texture_height: ?isize = 0
+};
 
 pub const Texture = struct {
     amount: usize = 1
@@ -244,17 +248,19 @@ pub fn deinit() void {
     shader.deinit();
 }
 
-pub fn paint(styles: Styles) !void {
+pub fn paint(attributes: Attributes) !void {
     shader.use();
+
+    const styles = attributes.styles;
 
     const top = styles.top orelse unreachable;
     const left = styles.left orelse unreachable;
-    const width: f32 = styles.width orelse @floatFromInt(styles.texture_width orelse unreachable);
-    const height: f32 = styles.height orelse @floatFromInt(styles.texture_height orelse unreachable);
+    const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width orelse unreachable);
+    const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height orelse unreachable);
 
-    if (styles.texture) |data| {
-        const texture_width = styles.texture_width orelse unreachable;
-        const texture_height = styles.texture_height orelse unreachable;
+    if (attributes.texture) |data| {
+        const texture_width = attributes.texture_width orelse unreachable;
+        const texture_height = attributes.texture_height orelse unreachable;
         const sx = styles.sx orelse unreachable;
         const sy = styles.sy orelse unreachable;
 
@@ -290,14 +296,14 @@ pub fn paint(styles: Styles) !void {
             );
         }
 
-        const format: c.GLint = switch (styles.texture_channels orelse 3) {
+        const format: c.GLint = switch (attributes.texture_channels orelse 3) {
             3 => c.GL_RGB,
             4 => c.GL_RGBA,
             else => return error.UnsupportedImageFormat
         };
         c.glTexImage2D(
             c.GL_TEXTURE_2D,
-            styles.texture_level orelse unreachable,
+            attributes.texture_level orelse unreachable,
             format,
             @intCast(texture_width),
             @intCast(texture_height),
@@ -325,7 +331,7 @@ pub fn paint(styles: Styles) !void {
             @sizeOf(c.GLfloat) * INSTANCE_SIZE,
             @ptrCast(&instance[0])
         );
-    } else if (styles.texture_id) |texture_id| {
+    } else if (attributes.texture_id) |texture_id| {
         _ = texture_id;
     }
 
