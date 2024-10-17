@@ -41,6 +41,11 @@ pub fn build(b: *Build) !void {
      	.target = target
     });
 
+    const util = b.addModule("util", .{
+        .root_source_file = b.path("src/utils/util.zig"),
+        .target = target
+    });
+
     const color = b.addModule("color", .{
     	.root_source_file = b.path("src/utils/color.zig"),
      	.target = target
@@ -65,6 +70,7 @@ pub fn build(b: *Build) !void {
       	.target = target, .optimize = optimize
     });
 
+    main.root_module.addImport("util", util);
     main.root_module.addImport("math", math);
     main.root_module.addImport("color", color);
     main.root_module.addImport("style", style);

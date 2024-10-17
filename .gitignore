@@ -2,5 +2,5 @@
 zig-cache
 zig-out
 
-test.*
+test*.*
 Makefile

@@ -1,4 +1,5 @@
 const c = @cImport({
+    @cInclude("stb_image.h");
     @cInclude("stb_image_write.h");
 });
 const std = @import("std");
@@ -22,29 +23,29 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    try font.setup();
-    defer font.cleanup();
+    // try font.setup();
+    // defer font.cleanup();
 
-    var test_font = try Font.from(allocator, "test.ttf", .{
-    	.font_size = 72
-    });
-    defer test_font.deinit();
+    // var test_font = try Font.from(allocator, "test.ttf", .{
+    // 	.font_size = 72
+    // });
+    // defer test_font.deinit();
 
-    var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
-    defer allocator.free(png);
-    for (0..test_font.atlas_width * test_font.atlas_height) |i| {
-        png[i * 4 + 0] = test_font.atlas[i];
-        png[i * 4 + 1] = test_font.atlas[i];
-        png[i * 4 + 2] = test_font.atlas[i];
-        png[i * 4 + 3] = 0xff;
-    }
-    _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
+    // var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
+    // defer allocator.free(png);
+    // for (0..test_font.atlas_width * test_font.atlas_height) |i| {
+    //     png[i * 4 + 0] = test_font.atlas[i];
+    //     png[i * 4 + 1] = test_font.atlas[i];
+    //     png[i * 4 + 2] = test_font.atlas[i];
+    //     png[i * 4 + 3] = 0xff;
+    // }
+    // _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
 
     var app = try cellui.setup(allocator, .{
         .initial_width = 800,
         .initial_height = 600,
         .title = "cellui",
-        .background = "#667799",
+        .background = "#690",
 
         .debug = true
     }, init);
@@ -62,7 +63,9 @@ fn init(app: *App) anyerror!void {
                 .left = 150,
                 .width = 500,
                 .height = 550,
-                .background_color = try color.process("#ff0000")
+                .background_color = try color.process("#fff000"),
+                .border_top_width = 2,
+                .border_top_color = try color.process("#fff")
             }
         )
     );
@@ -74,10 +77,55 @@ fn init(app: *App) anyerror!void {
                 .left = 25,
                 .width = 50,
                 .height = 50,
-                .background_color = try color.process("#00ff00")
+                .background_color = try color.process("#00fff0"),
             }
         )
     );
+
+    var styles: Image.Styles = .{
+        .top = 100,
+        .left = 100,
+    };
+
+    var w: c_int = undefined;
+    var h: c_int = undefined;
+    var nr_channels: c_int = undefined;
+
+    const img = c.stbi_load("test.png", &w, &h, &nr_channels, 0);
+    if (img == null) std.debug.panic("", .{});
+    defer c.stbi_image_free(img);
+
+    styles.texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]);
+    styles.texture_width = w;
+    styles.texture_height = h;
+    styles.texture_channels = nr_channels;
+
+    _ = try app.root.appendChild(
+        try Element(Image).init(
+            app.allocator,
+            styles
+        )
+    );
+
+    const copy: Image.Styles = .{
+        .texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]),
+        .texture_width = styles.texture_width,
+        .texture_height = styles.texture_height,
+        .texture_channels = styles.texture_channels,
+
+        .top = 100,
+        .left = 400,
+        .width = 600,
+        .height = 300
+    };
+
+    _ = try app.root.appendChild(
+        try Element(Image).init(
+            app.allocator,
+            copy
+        )
+    );
+
     // _ = try app.root.appendChild(
     // 	try Element(Text).init(
     //  		app.allocator,
@@ -86,10 +134,12 @@ fn init(app: *App) anyerror!void {
     //        		.left = 25,
     //          	.width = 50,
     //           	.height = 50,
-    //            	.color =
-    //      	}
+    //      	},
+    //         .{
+    //             .text = "Hello, world!"
+    //         }
     //  	)
-    // )
+    // );
 }
 
 fn loop(app: *App) anyerror!void {

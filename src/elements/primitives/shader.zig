@@ -25,8 +25,8 @@ pub fn init(
 
     c.glGetShaderiv(vertex_shader, c.GL_COMPILE_STATUS, &success);
     if (success == c.GL_FALSE) {
-        c.glGetShaderInfoLog(vertex_shader, 512, null, info_log);
         panic("Crashed: Error compiling vertex shader\n", .{});
+        c.glGetShaderInfoLog(vertex_shader, 512, null, info_log);
     }
 
     const fragment_shader = c.glCreateShader(c.GL_FRAGMENT_SHADER);
@@ -36,8 +36,8 @@ pub fn init(
 
     c.glGetShaderiv(fragment_shader, c.GL_COMPILE_STATUS, &success);
     if (success == c.GL_FALSE) {
-        c.glGetShaderInfoLog(fragment_shader, 512, null, info_log);
         panic("Crashed: Error compiling fragment shader\n", .{});
+        c.glGetShaderInfoLog(fragment_shader, 512, null, info_log);
     }
 
     const shader_program = c.glCreateProgram();
@@ -47,8 +47,8 @@ pub fn init(
 
     c.glGetProgramiv(shader_program, c.GL_LINK_STATUS, &success);
     if (success == c.GL_FALSE) {
-        c.glGetProgramInfoLog(shader_program, 512, null, info_log);
         panic("Crashed: Error compiling shader program\n", .{});
+        c.glGetProgramInfoLog(shader_program, 512, null, info_log);
     }
 
     return .{ .program = shader_program };

@@ -7,6 +7,7 @@ const JSON = std.json.ArrayHashMap([]const u8);
 const Self = @This();
 
 pub const ColorPrimitive = [4]f32;
+pub const transparent = ColorPrimitive{ 0.0, 0.0, 0.0, 1.0 };
 
 pub const ColorKind = enum { primitive, hex };
 
@@ -14,7 +15,7 @@ pub const defaults_location = "src/utils/color_defaults.json";
 pub var defaults: JSON = undefined;
 
 kind: ColorKind = .primitive,
-repr: ColorPrimitive = [4]f32{0.0, 0.0, 0.0, 1.0},
+repr: ColorPrimitive = transparent,
 
 pub fn setup(allocator: Allocator) !void {
 	const file= try std.fs.cwd().openFile(defaults_location, .{});
@@ -23,8 +24,6 @@ pub fn setup(allocator: Allocator) !void {
 	const buf = try allocator.alloc(u8, try file.getEndPos());
 	_ = try file.readAll(buf);
 	defer allocator.free(buf);
-
-	std.debug.print("{any}\n", .{buf});
 
 	// defaults = try JSON.jsonParseFromValue(
 	// 	allocator,

@@ -3,6 +3,7 @@ const c = @cImport({
 	@cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
+const style = @import("style");
 const Matrix4x4 = @import("math").Matrix4x4;
 
 pub const Image = @import("primitives/image.zig");
@@ -30,7 +31,8 @@ pub fn Element(comptime T: type) type {
 		}
 
 		pub fn paint(self: *Element(T)) !void {
-			try T.paint(self.styles);
+			style.resolve(&self.styles);
+		    try T.paint(self.styles);
 		}
 	};
 }

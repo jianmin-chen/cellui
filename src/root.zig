@@ -165,8 +165,8 @@ fn processInput(self: *Self) void {
 
 pub fn render(_: *Self) !void {
     // Most of the work is made out to external calls.
-    try Image.render();
     try Rectangle.render();
+    try Image.render();
 }
 
 pub fn add(self: *Self) !void {
