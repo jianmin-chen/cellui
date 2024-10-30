@@ -118,7 +118,7 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
          	}
       	)
     );
-    try self.root.paint();
+    // try self.root.paint();
 
     try callback(&self);
 

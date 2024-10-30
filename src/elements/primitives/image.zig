@@ -1,10 +1,6 @@
-// This uses 1/3 of the texture units available on target,
-// not bindless textures due to general target incompatability.
-
 const c = @cImport({
     @cInclude("glad/glad.h");
     @cInclude("GLFW/glfw3.h");
-    @cInclude("stb_image.h");
 });
 const std = @import("std");
 const style = @import("style");
@@ -27,9 +23,9 @@ const INSTANCE_SIZE = DEST_SIZE + SRC_SIZE;
 
 const INDICES_SIZE = 6;
 
-const MAX_IMAGES = std.math.maxInt(c_int);
+const MAX_IMAGES_PER_BUFFER = std.math.maxInt(c_int);
 
-pub const vertex =
+pub const vertex = 
     \\#version 330 core
     \\
     \\layout (location = 0) in vec4 base;
@@ -47,7 +43,7 @@ pub const vertex =
     \\}
 ;
 
-pub const fragment =
+pub const fragment = 
     \\#version 330 core
     \\
     \\in vec2 tex_coords;
@@ -80,7 +76,6 @@ pub const WrapOption = enum {
 };
 
 pub const MipmapOption = enum {
-    none,
     nearest,
     linear,
     nearest_mipmap_nearest,
@@ -95,8 +90,7 @@ pub const MipmapOption = enum {
             .nearest_mipmap_nearest => c.GL_NEAREST_MIPMAP_NEAREST,
             .linear_mipmap_nearest => c.GL_LINEAR_MIPMAP_NEAREST,
             .nearest_mipmap_linear => c.GL_NEAREST_MIPMAP_LINEAR,
-            .linear_mipmap_linear => c.GL_LINEAR_MIPMAP_LINEAR,
-            else => unreachable
+            .linear_mipmap_linear => c.GL_LINEAR_MIPMAP_LINEAR
         };
     }
 
@@ -114,11 +108,11 @@ pub const Styles = style.merge(
     struct {
         wrap_horizontal: WrapOption = .clamp_to_border,
         wrap_vertical: WrapOption = .clamp_to_border,
-        min_filter: MipmapOption = .linear,
-        mag_filter: MipmapOption = .linear,
+        min_filter: ?MipmapOption = .linear,
+        mag_filter: ?MipmapOption = .linear,
 
-        sx: ?f32 = 0,
-        sy: ?f32 = 0,
+        sx: f32 = 0,
+        sy: f32 = 0,
         swidth: ?f32 = null,
         sheight: ?f32 = null
     }
@@ -129,35 +123,134 @@ pub const Attributes = struct {
 
     texture: ?[]u8 = null,
     texture_id: ?usize = null,
-    texture_level: ?c_int = 0,
-    texture_channels: ?isize = 3,
-    texture_width: ?isize = 0,
-    texture_height: ?isize = 0
+    texture_level: isize = 0,
+    texture_channels: ?isize = null,
+    texture_width: ?isize = null,
+    texture_height: ?isize = null
 };
 
 pub const Texture = struct {
-    amount: usize = 1
+    amount: usize = 1,
+    vao: c_uint = undefined,
+    vbo: c_uint = undefined,
+
+    width: f32,
+    height: f32,
+
+    pub fn init(instance: [INSTANCE_SIZE]f32) Texture {
+        var vao: c_uint = undefined;
+        var vbo: c_uint = undefined;
+
+        c.glGenVertexArrays(1, &vao);
+        c.glGenBuffers(1, &vbo);
+
+        c.glBindVertexArray(vao);
+
+        // Base
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
+        c.glVertexAttribPointer(
+            0,
+            VERTEX_SIZE,
+            c.GL_FLOAT,
+            c.GL_FALSE,
+            VERTEX_SIZE * @sizeOf(c.GLfloat),
+            null
+        );
+        c.glEnableVertexAttribArray(0);
+
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+        c.glBufferData(
+            c.GL_ARRAY_BUFFER,
+            @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_IMAGES_PER_BUFFER,
+            null,
+            c.GL_DYNAMIC_DRAW
+        );
+
+        c.glBufferSubData(
+            c.GL_ARRAY_BUFFER,
+            0,
+            @sizeOf(c.GLfloat) * INSTANCE_SIZE,
+            @ptrCast(&instance[0])
+        );
+
+        // Destination = { dx, dy, dwidth, dheight }
+        c.glVertexAttribPointer(
+            1,
+            DEST_SIZE,
+            c.GL_FLOAT,
+            c.GL_FALSE,
+            INSTANCE_SIZE * @sizeOf(c.GLfloat),
+            null
+        );
+        c.glEnableVertexAttribArray(1);
+        c.glVertexAttribDivisor(1, 1);
+
+        // Source = { sx, sy, swidth, sheight }
+        const source_offset: *const anyopaque = @ptrFromInt(DEST_SIZE * @sizeOf(c.GLfloat));
+        c.glVertexAttribPointer(
+            2,
+            SRC_SIZE,
+            c.GL_FLOAT,
+            c.GL_FALSE,
+            INSTANCE_SIZE * @sizeOf(c.GLfloat),
+            source_offset
+        );
+        c.glEnableVertexAttribArray(2);
+        c.glVertexAttribDivisor(2, 1);
+
+        c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+        return .{
+            .vao = vao,
+            .vbo = vbo,
+            .width = instance[6],
+            .height = instance[7]
+        };
+    }
+
+    pub fn increment(self: Texture, instance: [INSTANCE_SIZE]f32) Texture {
+        c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
+        c.glBufferSubData(
+            c.GL_ARRAY_BUFFER,
+            @as(c.GLint, @intCast(self.amount * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
+            @sizeOf(c.GLfloat) * INSTANCE_SIZE,
+            @ptrCast(&instance[0])
+        );
+
+        return .{
+            .amount = self.amount + 1,
+            .vao = self.vao,
+            .vbo = self.vbo,
+
+            .width = self.width,
+            .height = self.height
+        };
+    }
+
+    pub fn render(self: Texture) void {
+        c.glBindVertexArray(self.vao);
+        c.glDrawElementsInstanced(
+            c.GL_TRIANGLES,
+            @intCast(INDICES_SIZE),
+            c.GL_UNSIGNED_INT,
+            null,
+            @intCast(self.amount)
+        );
+    }
 };
 
 pub var shader: Shader = undefined;
-pub var vao: c_uint = undefined;
 pub var base_vbo: c_uint = undefined;
-pub var instanced_vbo: c_uint = undefined;
 pub var ebo: c_uint = undefined;
 
 pub var textures: HashMap(c_uint, Texture) = undefined;
-pub var texture_count: usize = 0;
 
 pub fn init(allocator: Allocator) !void {
     shader = try Shader.init(vertex, fragment);
     textures = HashMap(c_uint, Texture).init(allocator);
 
-    c.glGenVertexArrays(1, &vao);
     c.glGenBuffers(1, &base_vbo);
-    c.glGenBuffers(1, &instanced_vbo);
     c.glGenBuffers(1, &ebo);
-
-    c.glBindVertexArray(vao);
 
     // Base rectangle: 1x1 pixel in top-left corner, covers entire source image.
     const base_vertices = [_]c.GLfloat{
@@ -175,50 +268,6 @@ pub fn init(allocator: Allocator) !void {
         c.GL_STATIC_DRAW
     );
 
-    // Base
-    c.glVertexAttribPointer(
-        0,
-        VERTEX_SIZE,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        VERTEX_SIZE * @sizeOf(c.GLfloat),
-        null
-    );
-    c.glEnableVertexAttribArray(0);
-
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
-    c.glBufferData(
-        c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_IMAGES,
-        null,
-        c.GL_DYNAMIC_DRAW
-    );
-
-    // Destination = { dx, dy, dwidth, dheight }
-    c.glVertexAttribPointer(
-        1,
-        DEST_SIZE,
-        c.GL_FLOAT,
-        c.GL_FALSE,
-        INSTANCE_SIZE * @sizeOf(c.GLfloat),
-        null
-    );
-    c.glEnableVertexAttribArray(1);
-    c.glVertexAttribDivisor(1, 1);
-
-    // Source = { sx, sy, swidth, sheight }
-    const source_offset: *const anyopaque = @ptrFromInt(DEST_SIZE * @sizeOf(c.GLfloat));
-    c.glVertexAttribPointer(
-        2,
-        SRC_SIZE,
-        c.GL_FLOAT,
-        c.GL_TRUE,
-        INSTANCE_SIZE * @sizeOf(c.GLfloat),
-        source_offset
-    );
-    c.glEnableVertexAttribArray(2);
-    c.glVertexAttribDivisor(2, 1);
-
     const indices = [_]c.GLuint{
         3, 1, 0,
         3, 2, 1
@@ -231,10 +280,6 @@ pub fn init(allocator: Allocator) !void {
         @ptrCast(&indices[0]),
         c.GL_STATIC_DRAW
     );
-
-    var allocated_units: c.GLint = undefined;
-    c.glGetIntegerv(c.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &allocated_units);
-    std.debug.print("{any}\n", .{allocated_units});
 }
 
 pub fn deinit() void {
@@ -244,7 +289,6 @@ pub fn deinit() void {
     }
     textures.deinit();
 
-    c.glDeleteVertexArrays(1, &vao);
     shader.deinit();
 }
 
@@ -255,22 +299,19 @@ pub fn paint(attributes: Attributes) !void {
 
     const top = styles.top orelse unreachable;
     const left = styles.left orelse unreachable;
-    const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width orelse unreachable);
-    const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height orelse unreachable);
 
     if (attributes.texture) |data| {
+        const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width orelse unreachable);
+        const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height orelse unreachable);
         const texture_width = attributes.texture_width orelse unreachable;
         const texture_height = attributes.texture_height orelse unreachable;
-        const sx = styles.sx orelse unreachable;
-        const sy = styles.sy orelse unreachable;
 
         c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 
         var texture: c_uint = undefined;
         c.glGenTextures(1, &texture);
-        try textures.put(texture, Texture{});
-
         c.glBindTexture(c.GL_TEXTURE_2D, texture);
+
         c.glTexParameteri(
             c.GL_TEXTURE_2D,
             c.GL_TEXTURE_WRAP_S,
@@ -281,29 +322,35 @@ pub fn paint(attributes: Attributes) !void {
             c.GL_TEXTURE_WRAP_T,
             WrapOption.to_flag(styles.wrap_vertical)
         );
-        if (styles.min_filter != .none)
+
+        assert(
+            !((styles.min_filter == null and styles.mag_filter != null)
+                or (styles.min_filter != null and styles.mag_filter == null))
+        );
+        if (styles.min_filter) |min_filter| {
             c.glTexParameteri(
                 c.GL_TEXTURE_2D,
                 c.GL_TEXTURE_MIN_FILTER,
-                MipmapOption.to_flag(styles.min_filter)
+                MipmapOption.to_flag(min_filter)
             );
-        if (styles.mag_filter != .none) {
-            assert(MipmapOption.valid(styles.mag_filter, c.GL_TEXTURE_MAG_FILTER));
+        }
+        if (styles.mag_filter) |mag_filter| {
+            assert(MipmapOption.valid(mag_filter, c.GL_TEXTURE_MAG_FILTER));
             c.glTexParameteri(
                 c.GL_TEXTURE_2D,
                 c.GL_TEXTURE_MAG_FILTER,
-                MipmapOption.to_flag(styles.mag_filter)
+                MipmapOption.to_flag(mag_filter)
             );
         }
 
-        const format: c.GLint = switch (attributes.texture_channels orelse 3) {
+        const format: c.GLint = switch (attributes.texture_channels orelse unreachable) {
             3 => c.GL_RGB,
             4 => c.GL_RGBA,
             else => return error.UnsupportedImageFormat
         };
         c.glTexImage2D(
             c.GL_TEXTURE_2D,
-            attributes.texture_level orelse unreachable,
+            @intCast(attributes.texture_level),
             format,
             @intCast(texture_width),
             @intCast(texture_height),
@@ -313,46 +360,52 @@ pub fn paint(attributes: Attributes) !void {
             @ptrCast(&data[0])
         );
 
-        if (styles.min_filter != .none or styles.mag_filter != .none)
+        if (styles.min_filter != null and styles.mag_filter != null)
             c.glGenerateMipmap(c.GL_TEXTURE_2D);
-
+        
         c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 4);
 
-        const instance = [_]c.GLfloat{
-            left, top, width, height,
-            sx, sy, @floatFromInt(texture_width), @floatFromInt(texture_height)
-        };
-        std.debug.print("{any}\n", .{instance});
+        const swidth: f32 = styles.swidth orelse @floatFromInt(texture_width);
+        const sheight: f32 = styles.sheight orelse @floatFromInt(texture_height);
 
-        c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
-        c.glBufferSubData(
-            c.GL_ARRAY_BUFFER,
-            @as(c.GLint, @intCast(texture_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
-            @sizeOf(c.GLfloat) * INSTANCE_SIZE,
-            @ptrCast(&instance[0])
+        try textures.put(
+            texture,
+            Texture.init(
+                [_]c.GLfloat{
+                    left, top, width, height,
+                    styles.sx, styles.sy, swidth, sheight
+                }
+            )
         );
     } else if (attributes.texture_id) |texture_id| {
-        _ = texture_id;
-    }
-
-    texture_count += 1;
+        const id: c_uint = @intCast(texture_id);
+        if (textures.get(id)) |texture| {
+            const width = styles.width orelse texture.width;
+            const height = styles.height orelse texture.height;
+            const swidth: f32 = styles.swidth orelse texture.width;
+            const sheight: f32 = styles.sheight orelse texture.height;
+            try textures.put(
+                id,
+                texture.increment(
+                    [_]c.GLfloat{
+                        left, top, width, height,
+                        styles.sx, styles.sy, swidth, sheight
+                    }
+                )
+            );
+        } else return error.TextureNotFound;
+    } else return error.NoTextureReference;
 }
 
 pub fn render() !void {
     shader.use();
 
-    c.glBindVertexArray(vao);
-
     var it = textures.iterator();
     while (it.next()) |entry| {
+        const id = entry.key_ptr.*;
         const texture = entry.value_ptr.*;
-        c.glBindTexture(c.GL_TEXTURE_2D, entry.key_ptr.*);
-        c.glDrawElementsInstanced(
-            c.GL_TRIANGLES,
-            @intCast(INDICES_SIZE),
-            c.GL_UNSIGNED_INT,
-            null,
-            @intCast(texture.amount)
-        );
+    
+        c.glBindTexture(c.GL_TEXTURE_2D, id);
+        texture.render();
     }
 }

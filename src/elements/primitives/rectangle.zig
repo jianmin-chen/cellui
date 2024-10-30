@@ -25,7 +25,7 @@ const INDICES_SIZE = 6;
 
 const MAX_RECTANGLES = std.math.maxInt(c_int);
 
-pub const vertex =
+pub const vertex = 
     \\#version 330 core
     \\
     \\layout (location = 0) in vec2 base;
@@ -41,48 +41,39 @@ pub const vertex =
     \\out vec4 rect_dim;
     \\out vec4 rect_color;
     \\out vec4 rect_radii;
+    \\out mat4 proj;
     \\
     \\uniform mat4 projection;
     \\
     \\void main() {
     \\  vec2 xy = base * rectangle.zw + rectangle.xy;
     \\  gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\  rect_dim = projection * vec4(xy, rectangle.zw);
+    \\  rect_dim = rectangle;
     \\  rect_color = color;
     \\  rect_radii = radii;
+    \\  proj = projection;
     \\}
 ;
 
-pub const fragment =
+pub const fragment = 
     \\#version 330 core
     \\
     \\in vec4 rect_dim;
     \\in vec4 rect_color;
     \\in vec4 rect_radii;
+    \\in mat4 proj;
     \\
     \\out vec4 out_color;
     \\
     \\float rounded(vec2 p, vec2 b, vec4 r) {
-    \\  // r = { top-right, bottom-right, top-left, bottom-left }
     \\  r.xy = (p.x > 0.0) ? r.xy : r.zw;
     \\  r.x = (p.y > 0.0) ? r.x : r.y;
     \\  vec2 sl = abs(p) - b + r.x;
     \\  return min(max(sl.x, sl.y), 0.0) + length(max(sl, 0.0)) - r.x;
     \\}
     \\
-    \\vec3 border(
-    \\  vec3 background
-    \\) {
-    \\  return background;
-    \\}
-    \\
     \\void main() {
-    \\  float alpha = step(
-    \\      0.0,
-    \\      rounded(rect_dim.xy, rect_dim.zw + 1.0, vec4(0.2, 0.2, 0.2, 0.2))
-    \\  );
-    \\  vec3 color = border(rect_color.rgb);
-    \\  out_color = vec4(color, rect_color.a * alpha);
+    \\  out_color = rect_color;
     \\}
 ;
 

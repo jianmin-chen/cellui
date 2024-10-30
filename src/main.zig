@@ -10,6 +10,7 @@ const font = @import("font");
 
 const elements = @import("elements/root.zig");
 const Element = elements.Element;
+const Node = elements.Node;
 const Image = elements.Image;
 const Rectangle = elements.Rectangle;
 
@@ -86,22 +87,51 @@ fn init(app: *App) anyerror!void {
         )
     );
 
-    var w: c_int = undefined;
-    var h: c_int = undefined;
-    var nr_channels: c_int = undefined;
+    const node = try _load(app, "test-hippo.png", .{
+        .top = 100,
+        .left = -20
+    });
+    const hippo: *Element(Image) = @alignCast(@ptrCast(node.value));
+    _ = hippo;
 
-    const img = c.stbi_load("test.png", &w, &h, &nr_channels, 0);
-    if (img == null) std.debug.panic("", .{});
-    defer c.stbi_image_free(img);
+    _ = try _load(app, "test.png", .{
+        .top = 0,
+        .left = 300
+    });
 
     _ = try app.root.appendChild(
         try Element(Image).init(
             app.allocator,
             .{
                 .styles = .{
-                    .top = 100,
-                    .left = 100
+                    .top = -20,
+                    .left = -20
                 },
+                .texture_id = 1
+            }
+        )
+    );
+}
+
+fn loop(app: *App) anyerror!void {
+    _ = app;
+    // std.debug.print("fps: {any}\n", .{app.fps});
+}
+
+fn _load(app: *App, path: []const u8, styles: Image.Styles) !*Node {
+    var w: c_int = undefined;
+    var h: c_int = undefined;
+    var nr_channels: c_int = undefined;
+
+    const img = c.stbi_load(@ptrCast(path), &w, &h, &nr_channels, 0);
+    if (img == null) std.debug.panic("", .{});
+    defer c.stbi_image_free(img);
+
+    const node = try app.root.appendChild(
+        try Element(Image).init(
+            app.allocator,
+            .{
+                .styles = styles,
                 .texture = @ptrCast(img[0..@intCast(w * h * nr_channels)]),
                 .texture_width = w,
                 .texture_height = h,
@@ -109,9 +139,5 @@ fn init(app: *App) anyerror!void {
             }
         )
     );
-}
-
-fn loop(app: *App) anyerror!void {
-    // _ = app;
-    std.debug.print("fps: {any}\n", .{app.fps});
+    return node;
 }
