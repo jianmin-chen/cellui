@@ -4,6 +4,7 @@ const c = @cImport({
 });
 const std = @import("std");
 pub const color = @import("color");
+pub const font = @import("font");
 const elements = @import("elements/root.zig");
 const math = @import("math");
 
@@ -102,6 +103,7 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
 
     try elements.setup(allocator, self.projection);
     try color.setup(allocator);
+    try font.setup();
 
     self.root = try Node.wrap(
     	allocator,
@@ -129,6 +131,7 @@ pub fn deinit(self: *Self) void {
     self.root.deinit();
     elements.cleanup(self.allocator);
     color.cleanup(self.allocator);
+    font.cleanup();
 
     c.glfwTerminate();
 }

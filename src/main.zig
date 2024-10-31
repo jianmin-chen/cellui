@@ -13,6 +13,7 @@ const Element = elements.Element;
 const Node = elements.Node;
 const Image = elements.Image;
 const Rectangle = elements.Rectangle;
+const Text = elements.Text;
 
 const Font = font.Font;
 
@@ -27,21 +28,6 @@ pub fn main() !void {
     // try font.setup();
     // defer font.cleanup();
 
-    // var test_font = try Font.from(allocator, "test.ttf", .{
-    // 	.font_size = 72
-    // });
-    // defer test_font.deinit();
-
-    // var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
-    // defer allocator.free(png);
-    // for (0..test_font.atlas_width * test_font.atlas_height) |i| {
-    //     png[i * 4 + 0] = test_font.atlas[i];
-    //     png[i * 4 + 1] = test_font.atlas[i];
-    //     png[i * 4 + 2] = test_font.atlas[i];
-    //     png[i * 4 + 3] = 0xff;
-    // }
-    // _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
-
     var app = try cellui.setup(allocator, .{
         .initial_width = 800,
         .initial_height = 600,
@@ -51,6 +37,21 @@ pub fn main() !void {
         .debug = true
     }, init);
     defer app.deinit();
+
+    var test_font = try Font.from(allocator, "test.ttf", .{
+    	.font_size = 72
+    });
+    defer test_font.deinit();
+
+    var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
+    defer allocator.free(png);
+    for (0..test_font.atlas_width * test_font.atlas_height) |i| {
+        png[i * 4 + 0] = test_font.atlas[i];
+        png[i * 4 + 1] = test_font.atlas[i];
+        png[i * 4 + 2] = test_font.atlas[i];
+        png[i * 4 + 3] = 0xff;
+    }
+    _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
 
     try app.loop(loop);
 }
@@ -108,6 +109,21 @@ fn init(app: *App) anyerror!void {
                     .left = -20
                 },
                 .texture_id = 1
+            }
+        )
+    );
+
+    _ = try app.root.appendChild(
+        try Element(Text).init(
+            app.allocator,
+            .{
+                .styles = .{
+                    .top = 20,
+                    .left = 40,
+                    .font_size = 14
+                },
+                .font_src = "test.ttf",
+                .text = "cellui says hello, world!"
             }
         )
     );

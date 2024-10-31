@@ -8,6 +8,7 @@ const Matrix4x4 = @import("math").Matrix4x4;
 
 pub const Image = @import("primitives/image.zig");
 pub const Rectangle = @import("primitives/rectangle.zig");
+pub const Text = @import("primitives/text.zig");
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
@@ -133,6 +134,7 @@ pub const Node = struct {
 pub fn setup(allocator: Allocator, projection: Matrix4x4) !void {
 	try Image.init(allocator);
 	try Rectangle.init(allocator);
+	try Text.init(allocator);
 	viewport(projection);
 }
 
@@ -154,4 +156,5 @@ pub fn viewport(projection: Matrix4x4) void {
 pub fn cleanup(_: Allocator) void {
 	Image.deinit();
 	Rectangle.deinit();
+	Text.deinit();
 }

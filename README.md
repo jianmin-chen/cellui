@@ -9,5 +9,5 @@ Dependencies right now, would love to dig into these at some point:
 
 * GLFW
 * Glad
-* FreeType
+* FreeType for creating texture atlases for text, Harfbuzz for shaping text, 
 * stb_image utilities

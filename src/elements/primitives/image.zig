@@ -252,7 +252,7 @@ pub fn init(allocator: Allocator) !void {
     c.glGenBuffers(1, &base_vbo);
     c.glGenBuffers(1, &ebo);
 
-    // Base rectangle: 1x1 pixel in top-left corner, covers entire source image.
+    // Base image rectangle: 1x1 pixel in top-left corner, covers entire source image.
     const base_vertices = [_]c.GLfloat{
         0, 1, 0, 1,
         0, 0, 0, 0,
