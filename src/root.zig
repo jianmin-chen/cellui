@@ -31,12 +31,12 @@ pub const Projection = enum { ortho };
 pub const Callback = fn (self: *Self) anyerror!void;
 
 pub const Options = struct {
-	initial_width: c_int = 800,
-	initial_height: c_int = 600,
-	background: []const u8 = "#000",
-	title: ?[]const u8,
-	projection: Projection = .ortho,
-	debug: bool = false
+    initial_width: c_int = 800,
+    initial_height: c_int = 600,
+    background: []const u8 = "#000",
+    title: ?[]const u8,
+    projection: Projection = .ortho,
+    debug: bool = false
 };
 
 debug: bool = false,
@@ -68,10 +68,10 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
         c.glfwWindowHint(c.GLFW_OPENGL_FORWARD_COMPAT, c.GL_TRUE);
 
     const window = c.glfwCreateWindow(
-    	options.initial_width,
-     	options.initial_height,
-      	if (options.title) |t| @ptrCast(t) else "",
-       	null,
+        options.initial_width,
+         options.initial_height,
+          if (options.title) |t| @ptrCast(t) else "",
+           null,
         null
     );
 
@@ -92,12 +92,12 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
     const height: f32 = @floatFromInt(options.initial_height);
 
     var self: Self = .{
-    	.allocator = allocator,
-     	.window = window,
-      	.width = @intCast(options.initial_width),
-       	.height = @intCast(options.initial_height),
+        .allocator = allocator,
+         .window = window,
+          .width = @intCast(options.initial_width),
+           .height = @intCast(options.initial_height),
         .projection = switch (options.projection) {
-        	.ortho => Matrix.ortho(0, width, height, 0),
+            .ortho => Matrix.ortho(0, width, height, 0),
         },
         .debug = options.debug
     };
@@ -107,19 +107,19 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
     try font.setup();
 
     self.root = try Node.wrap(
-    	allocator,
-     	try Element(Rectangle).init(
-      		allocator,
-        	.{
+        allocator,
+         try Element(Rectangle).init(
+              allocator,
+            .{
                 .styles = .{
                     .top = 0.0,
-              		.left = 0.0,
-               	    .width = width,
-                   	.height = height,
+                      .left = 0.0,
+                       .width = width,
+                       .height = height,
                     .background_color = try color.process(options.background)
                 }
-         	}
-      	)
+             }
+          )
     );
     // try self.root.paint();
 
