@@ -120,7 +120,7 @@ pub const Node = struct {
 		} else {
 			if (self.last_child != null) {
 				node.previous = self.last_child;
-				(self.last_child orelse unreachable).next = node;
+				(self.last_child.?).next = node;
 				self.last_child = node;
 			} else return error.MissingLastChild;
 		}
@@ -140,13 +140,19 @@ pub fn setup(allocator: Allocator, projection: Matrix4x4) !void {
 
 pub fn viewport(projection: Matrix4x4) void {
 	c.glUniformMatrix4fv(
+		Image.shader.uniform("projection"),
+		1,
+		c.GL_FALSE,
+		@ptrCast(&projection)
+	);
+	c.glUniformMatrix4fv(
 		Rectangle.shader.uniform("projection"),
 		1,
 		c.GL_FALSE,
 		@ptrCast(&projection)
 	);
 	c.glUniformMatrix4fv(
-		Image.shader.uniform("projection"),
+		Text.shader.uniform("projection"),
 		1,
 		c.GL_FALSE,
 		@ptrCast(&projection)

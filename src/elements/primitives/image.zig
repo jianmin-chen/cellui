@@ -19,7 +19,8 @@ const VERTICES_SIZE = VERTEX_SIZE * 4;
 
 const DEST_SIZE = 4;
 const SRC_SIZE = 4;
-const INSTANCE_SIZE = DEST_SIZE + SRC_SIZE;
+const TEXTURE_SIZE = 2;
+const INSTANCE_SIZE = DEST_SIZE + SRC_SIZE + TEXTURE_SIZE;
 
 const INDICES_SIZE = 6;
 
@@ -31,29 +32,32 @@ pub const vertex =
     \\layout (location = 0) in vec4 base;
     \\layout (location = 1) in vec4 dest;
     \\layout (location = 2) in vec4 src;
+    \\layout (location = 3) in vec2 tex;
     \\
-    \\out vec2 tex_coords;
+    \\out vec2 tex_coord;
     \\
     \\uniform mat4 projection;
     \\
     \\void main() {
     \\  vec2 xy = base.xy * dest.zw + dest.xy;
     \\  gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\  tex_coords = base.zw;
+    \\  vec2 swh = src.zw / tex;
+    \\  vec2 sxy = src.xy / tex;
+    \\  tex_coord = base.zw + sxy;
     \\}
 ;
 
 pub const fragment = 
     \\#version 330 core
     \\
-    \\in vec2 tex_coords;
+    \\in vec2 tex_coord;
     \\
     \\out vec4 color;
     \\
     \\uniform sampler2D tex;
     \\
     \\void main() {
-    \\  color = texture(tex, tex_coords);
+    \\  color = texture(tex, tex_coord);
     \\}
 ;
 
@@ -131,8 +135,8 @@ pub const Attributes = struct {
 
 pub const Texture = struct {
     amount: usize = 1,
-    vao: c_uint = undefined,
-    vbo: c_uint = undefined,
+    vao: c_uint,
+    vbo: c_uint,
 
     width: f32,
     height: f32,
@@ -198,23 +202,39 @@ pub const Texture = struct {
         c.glEnableVertexAttribArray(2);
         c.glVertexAttribDivisor(2, 1);
 
+        // Original texture = { texture width, texture height }
+        // Used with source for cropping.
+        const texture_offset: *const anyopaque = @ptrFromInt((DEST_SIZE + SRC_SIZE) * @sizeOf(c.GLfloat));
+        c.glVertexAttribPointer(
+            3,
+            TEXTURE_SIZE,
+            c.GL_FLOAT,
+            c.GL_FALSE,
+            INSTANCE_SIZE * @sizeOf(c.GLfloat),
+            texture_offset
+        );
+        c.glEnableVertexAttribArray(3);
+        c.glVertexAttribDivisor(3, 1);
+
         c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
 
         return .{
             .vao = vao,
             .vbo = vbo,
-            .width = instance[6],
-            .height = instance[7]
+            .width = instance[8],
+            .height = instance[9]
         };
     }
 
-    pub fn increment(self: Texture, instance: [INSTANCE_SIZE]f32) Texture {
+    pub fn increment(self: Texture, instance: [INSTANCE_SIZE - 2]f32) Texture {
+        const instance_data = instance ++ [_]f32{ self.width, self.height };
+
         c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
         c.glBufferSubData(
             c.GL_ARRAY_BUFFER,
-            @as(c.GLint, @intCast(self.amount * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
+            @sizeOf(c.GLfloat) * @as(c.GLint, @intCast(self.amount * INSTANCE_SIZE)),
             @sizeOf(c.GLfloat) * INSTANCE_SIZE,
-            @ptrCast(&instance[0])
+            @ptrCast(&instance_data[0])
         );
 
         return .{
@@ -293,18 +313,16 @@ pub fn deinit() void {
 }
 
 pub fn paint(attributes: Attributes) !void {
-    shader.use();
-
     const styles = attributes.styles;
 
-    const top = styles.top orelse unreachable;
-    const left = styles.left orelse unreachable;
+    const top = styles.top.?;
+    const left = styles.left.?;
 
     if (attributes.texture) |data| {
-        const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width orelse unreachable);
-        const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height orelse unreachable);
-        const texture_width = attributes.texture_width orelse unreachable;
-        const texture_height = attributes.texture_height orelse unreachable;
+        const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width.?);
+        const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height.?);
+        const texture_width = attributes.texture_width.?;
+        const texture_height = attributes.texture_height.?;
 
         c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 
@@ -343,7 +361,7 @@ pub fn paint(attributes: Attributes) !void {
             );
         }
 
-        const format: c.GLint = switch (attributes.texture_channels orelse unreachable) {
+        const format: c.GLint = switch (attributes.texture_channels.?) {
             3 => c.GL_RGB,
             4 => c.GL_RGBA,
             else => return error.UnsupportedImageFormat
@@ -373,7 +391,8 @@ pub fn paint(attributes: Attributes) !void {
             Texture.init(
                 [_]c.GLfloat{
                     left, top, width, height,
-                    styles.sx, styles.sy, swidth, sheight
+                    styles.sx, styles.sy, swidth, sheight,
+                    @floatFromInt(texture_width), @floatFromInt(texture_height)
                 }
             )
         );

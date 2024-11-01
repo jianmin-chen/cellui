@@ -18,6 +18,7 @@ const Element = elements.Element;
 const Node = elements.Node;
 const Image = elements.Image;
 const Rectangle = elements.Rectangle;
+const Text = elements.Text;
 
 const Matrix = math.Matrix;
 const Matrix4x4 = Matrix.Matrix4x4;
@@ -172,6 +173,7 @@ pub fn render(_: *Self) !void {
     // Most of the work is made out to external calls.
     try Rectangle.render();
     try Image.render();
+    try Text.render();
 }
 
 pub fn add(self: *Self) !void {

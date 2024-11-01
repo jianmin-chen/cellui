@@ -212,24 +212,22 @@ pub fn deinit() void {
 }
 
 pub fn paint(attributes: Attributes) !void {
-    shader.use();
-
     c.glBindVertexArray(vao);
 
     const styles = attributes.styles;
 
-    const background_color = styles.background_color orelse unreachable;
-	const border_radii = styles.border_radius orelse unreachable;
-	const border_width = styles.border_width orelse unreachable;
-	const border_color = styles.border_color orelse unreachable;
+    const background_color = styles.background_color.?;
+	const border_radii = styles.border_radius.?;
+	const border_width = styles.border_width.?;
+	const border_color = styles.border_color.?;
 	const border_top = border_color[0];
 	const border_right = border_color[1];
 	const border_bottom = border_color[2];
 	const border_left = border_color[3];
-	const left = styles.left orelse unreachable;
-	const top = styles.top orelse unreachable;
-	const width = styles.width orelse unreachable;
-	const height = styles.height orelse unreachable;
+	const left = styles.left.?;
+	const top = styles.top.?;
+	const width = styles.width.?;
+	const height = styles.height.?;
 
 	const instance = [_]c.GLfloat{
 	    left, top, width, height,

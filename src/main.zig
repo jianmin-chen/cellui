@@ -38,20 +38,20 @@ pub fn main() !void {
     }, init);
     defer app.deinit();
 
-    var test_font = try Font.from(allocator, "test.ttf", .{
-    	.font_size = 72
-    });
-    defer test_font.deinit();
+    // var test_font = try Font.from(allocator, "test.ttf", .{
+    // 	.font_size = 72
+    // });
+    // defer test_font.deinit();
 
-    var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
-    defer allocator.free(png);
-    for (0..test_font.atlas_width * test_font.atlas_height) |i| {
-        png[i * 4 + 0] = test_font.atlas[i];
-        png[i * 4 + 1] = test_font.atlas[i];
-        png[i * 4 + 2] = test_font.atlas[i];
-        png[i * 4 + 3] = 0xff;
-    }
-    _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
+    // var png: []u8 = try allocator.alloc(u8, test_font.atlas_width * test_font.atlas_height * 4);
+    // defer allocator.free(png);
+    // for (0..test_font.atlas_width * test_font.atlas_height) |i| {
+    //     png[i * 4 + 0] = test_font.atlas[i];
+    //     png[i * 4 + 1] = test_font.atlas[i];
+    //     png[i * 4 + 2] = test_font.atlas[i];
+    //     png[i * 4 + 3] = 0xff;
+    // }
+    // _ = c.stbi_write_png("test.png", @intCast(test_font.atlas_width), @intCast(test_font.atlas_height), 4, @ptrCast(&png[0]), @intCast(test_font.atlas_width * 4));
 
     try app.loop(loop);
 }
@@ -105,8 +105,13 @@ fn init(app: *App) anyerror!void {
             app.allocator,
             .{
                 .styles = .{
-                    .top = -20,
-                    .left = -20
+                    .top = 100,
+                    .left = 100,
+                    .width = 600,
+                    .height = 300,
+                    .sx = 50,
+                    .sy = 50,
+                    .swidth = 50
                 },
                 .texture_id = 1
             }
@@ -120,13 +125,31 @@ fn init(app: *App) anyerror!void {
                 .styles = .{
                     .top = 20,
                     .left = 40,
-                    .font_size = 14
+                    .font_size = 24
                 },
                 .font_src = "test.ttf",
+                .font_family = "Inter",
                 .text = "cellui says hello, world!"
             }
         )
     );
+
+    // _ = try app.root.appendChild(
+    //     try Element(Text).init(
+    //         app.allocator,
+    //         .{
+    //             .styles = .{
+    //                 .top = 200,
+    //                 .left = 200,
+    //                 .color = try color.process("#fff"),
+    //                 .font_size = 24
+    //             },
+    //             .font_src = "test.ttf",
+    //             .font_family = "Inter",
+    //             .text = "performs a linear interpolation"
+    //         }
+    //     )
+    // );
 }
 
 fn loop(app: *App) anyerror!void {

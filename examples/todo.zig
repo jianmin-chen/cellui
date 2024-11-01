@@ -125,8 +125,8 @@ fn root(app: *cellui.App) !*Element {
 
 fn add_task(app: *cellui.App, event: *cellui.Event) !void {
 	std.debug.print("{any}\n", .{event});
-	var tasks = try app.locateChild(.{ .id = "tasks" }) orelse unreachable;
-	try tasks.appendChild(try Todo.as_element())
+	var tasks = try app.locateChild(.{ .id = "tasks" }).?;
+	try tasks.appendChild(try Todo.as_element());
 }
 
 // Unfortunately Zig doesn't let us have anonymous functions or nested functions.
