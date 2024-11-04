@@ -37,33 +37,46 @@ pub fn build(b: *Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     const math = b.addModule("math", .{
-    	.root_source_file = b.path("src/math/root.zig"),
-     	.target = target
+    	.root_source_file = b.path("src/math/root.zig")
     });
 
     const util = b.addModule("util", .{
-        .root_source_file = b.path("src/utils/util.zig"),
-        .target = target
+        .root_source_file = b.path("src/utils/util.zig")
     });
 
     const color = b.addModule("color", .{
     	.root_source_file = b.path("src/utils/color.zig"),
-     	.target = target
+        .imports = &.{
+            .{ .name = "math", .module = math }
+        }
     });
-    color.addImport("math", math);
 
     const style = b.addModule("style", .{
     	.root_source_file = b.path("src/elements/style.zig"),
-     	.target = target
+        .imports = &.{
+            .{ .name = "color", .module = color }
+        }
     });
-    style.addImport("color", color);
 
     const font = b.addModule("font", .{
-    	.root_source_file = b.path("src/font/root.zig"),
-     	.target = target
+    	.root_source_file = b.path("src/font/root.zig")
     });
     attachDependenciesToModule(b, font);
 
+    const cellui = b.addModule("cellui", .{
+        .root_source_file = b.path("src/root.zig"),
+        .imports = &.{
+            .{ .name = "math", .module = math },
+            .{ .name = "util", .module = util },
+            .{ .name = "color", .module = color },
+            .{ .name = "style", .module = style },
+            .{ .name = "font", .module = font }
+        }
+    });
+
+    const options = b.addOptions();
+    cellui.addOptions("build", options);
+    
     const main = b.addExecutable(.{
     	.name = "cellui",
      	.root_source_file = b.path("src/main.zig"),

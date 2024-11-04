@@ -2,7 +2,6 @@
 
 const c = @cImport({
     @cInclude("ft.h");
-    @cInclude("glad/glad.h");
 });
 const std = @import("std");
 

@@ -3,7 +3,8 @@
     .version = "0.0.1",
     .paths = .{
         "src",
-        "deps"
+        "deps",
+        "build.zig"
     },
     .dependencies = .{}
 }
