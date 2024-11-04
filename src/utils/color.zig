@@ -18,12 +18,14 @@ kind: ColorKind = .primitive,
 repr: ColorPrimitive = transparent,
 
 pub fn setup(allocator: Allocator) !void {
-    const file= try std.fs.cwd().openFile(defaults_location, .{});
-    defer file.close();
+    _ = allocator;
+    
+    // const file= try std.fs.cwd().openFile(defaults_location, .{});
+    // defer file.close();
 
-    const buf = try allocator.alloc(u8, try file.getEndPos());
-    _ = try file.readAll(buf);
-    defer allocator.free(buf);
+    // const buf = try allocator.alloc(u8, try file.getEndPos());
+    // _ = try file.readAll(buf);
+    // defer allocator.free(buf);
 
     // defaults = try JSON.jsonParseFromValue(
     // 	allocator,
