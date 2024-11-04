@@ -59,7 +59,8 @@ pub fn build(b: *Build) !void {
     });
 
     const font = b.addModule("font", .{
-    	.root_source_file = b.path("src/font/root.zig")
+    	.root_source_file = b.path("src/font/root.zig"),
+        .target = target
     });
     attachDependenciesToModule(b, font);
 

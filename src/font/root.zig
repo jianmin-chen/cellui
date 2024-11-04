@@ -54,7 +54,7 @@ pub const Font = struct {
             .characters = StringHashMap(*Character).init(allocator)
         };
 
-        if (c.FT_New_Face(ft_library, @ptrCast(path), 0, &self.face) != c.GL_FALSE)
+        if (c.FT_New_Face(ft_library, @ptrCast(path), 0, &self.face) != 0)
             return error.FaceLoadError;
 
         const font_size: c_uint = @intCast(self.font_size);
@@ -78,7 +78,7 @@ pub const Font = struct {
         var y: usize = 0;
 
         for (self.range[0]..self.range[1]) |i| {
-            if (c.FT_Load_Char(self.face, i, c.FT_LOAD_RENDER) != c.GL_FALSE)
+            if (c.FT_Load_Char(self.face, i, c.FT_LOAD_RENDER) != 0)
                 return error.GlyphLoadError;
             
             const glyph = self.face.*.glyph.*;
@@ -165,7 +165,7 @@ pub const FontSDF = struct {
             .characters = StringHashMap(*Character).init(allocator)
         };
 
-        if (c.FT_New_Face(ft_library, @ptrCast(path), 0, &self.face) != c.GL_FALSE)
+        if (c.FT_New_Face(ft_library, @ptrCast(path), 0, &self.face) != 0)
             return error.FaceLoadError;
 
         const font_size: c_uint = 14;
@@ -190,7 +190,7 @@ pub const FontSDF = struct {
         const slot = self.face.*.glyph;
 
         for (self.range[0]..self.range[1]) |i| {
-            if (c.FT_Load_Char(self.face, i, c.FT_LOAD_RENDER) != c.GL_FALSE)
+            if (c.FT_Load_Char(self.face, i, c.FT_LOAD_RENDER) != 0)
                 return error.GlyphLoadError;
 
             _ = c.FT_Render_Glyph(slot, c.FT_RENDER_MODE_SDF);
@@ -251,7 +251,7 @@ pub const FontSDF = struct {
 };
 
 pub fn setup() !void {
-    if (c.FT_Init_FreeType(&ft_library) != c.GL_FALSE)
+    if (c.FT_Init_FreeType(&ft_library) != 0)
         return error.FreeTypeLoadError;
 }
 
