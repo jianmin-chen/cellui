@@ -53,7 +53,7 @@ pub const vertex =
     \\void main() {
     \\	vec2 xy = base.xy * text.zw + text.xy;
     \\	gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\	tex_coord = texcoord; 
+    \\	tex_coord = base.zw * texcoord;
     \\}
 ;
 
@@ -64,8 +64,11 @@ pub const fragment =
     \\
     \\out vec4 out_color;
     \\
+    \\uniform sampler2D tex;
+    \\
     \\void main() {
-    \\	out_color = vec4(1.0, 0.0, 0.0, 1.0);	
+    \\  float alpha = texture(tex, tex_coord).r;
+    \\  out_color = vec4(1.0, 0.0, 0.0, alpha);
     \\}
 ;
 
@@ -91,6 +94,7 @@ pub const FontSize = struct {
     vao: c_uint,
     vbo: c_uint,
     font: Font,
+    atlas: c_uint = undefined,
 
     character_count: usize = 0,
 
@@ -163,6 +167,50 @@ pub const FontSize = struct {
                 .font_size = font_size
             })
         };
+
+        c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
+
+        var texture: c_uint = undefined;
+        c.glGenTextures(1, &texture);
+        self.atlas = texture;
+        
+        c.glBindTexture(c.GL_TEXTURE_2D, texture);
+        c.glTexParameteri(
+            c.GL_TEXTURE_2D, 
+            c.GL_TEXTURE_WRAP_S,
+            c.GL_CLAMP_TO_BORDER
+        );
+        c.glTexParameteri(
+            c.GL_TEXTURE_2D,
+            c.GL_TEXTURE_WRAP_T,
+            c.GL_CLAMP_TO_BORDER
+        );
+        c.glTexParameteri(
+            c.GL_TEXTURE_2D, 
+            c.GL_TEXTURE_MIN_FILTER,
+            c.GL_LINEAR,
+        );
+        c.glTexParameteri(
+            c.GL_TEXTURE_2D,
+            c.GL_TEXTURE_MAG_FILTER,
+            c.GL_LINEAR
+        );
+        c.glGenerateMipmap(c.GL_TEXTURE_2D);
+
+        c.glTexImage2D(
+            c.GL_TEXTURE_2D,
+            0,
+            c.GL_RED,
+            @intCast(self.font.atlas_width),
+            @intCast(self.font.atlas_height),
+            0,
+            c.GL_RED,
+            c.GL_UNSIGNED_BYTE,
+            @ptrCast(&self.font.atlas[0])
+        );
+
+        c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 4);
+
         return self;
     }
 
@@ -188,12 +236,11 @@ pub const FontSize = struct {
 
             const offset = valid_len * INSTANCE_SIZE;
             instance_data[offset] = x + glyph.bearing_x;
-            instance_data[offset + 1] = y;
+            instance_data[offset + 1] = y - glyph.bearing_y;
             instance_data[offset + 2] = glyph.width;
             instance_data[offset + 3] = glyph.height;
             instance_data[offset + 4] = glyph.top / @as(c.GLfloat, @floatFromInt(self.font.atlas_height));
             instance_data[offset + 5] = glyph.left / @as(c.GLfloat, @floatFromInt(self.font.atlas_width));
-            std.debug.print("{d}\n", .{instance_data[offset..offset + 6]});
 
             x += @floatFromInt(glyph.advance_x);
             valid_len += 1;
@@ -212,6 +259,7 @@ pub const FontSize = struct {
     }
 
     pub fn render(self: *FontSize) void {
+        c.glBindTexture(c.GL_TEXTURE_2D, self.atlas);
         c.glBindVertexArray(self.vao);
         c.glDrawElementsInstanced(
             c.GL_TRIANGLES,

@@ -41,9 +41,12 @@ pub const vertex =
     \\void main() {
     \\  vec2 xy = base.xy * dest.zw + dest.xy;
     \\  gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\  vec2 swh = src.zw / tex;
     \\  vec2 sxy = src.xy / tex;
-    \\  tex_coord = base.zw + sxy;
+    \\  vec2 swh = src.zw / tex;
+    \\  tex_coord = vec2(
+    \\      max(base.z * (sxy.x + swh.x), sxy.x),
+    \\      max(base.w * (sxy.y + swh.y), sxy.y)
+    \\  ); 
     \\}
 ;
 

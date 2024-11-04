@@ -57,22 +57,21 @@ pub fn main() !void {
 }
 
 fn init(app: *App) anyerror!void {
-    _ = try app.root.appendChild(
-        try Element(Rectangle).init(
-            app.allocator,
-            .{
-                .styles = .{
-                    .top = 25,
-                    .left = 150,
-                    .width = 500,
-                    .height = 550,
-                    .background_color = try color.process("#fff000"),
-                    .border_top_width = 2,
-                    .border_top_color = try color.process("#fff")
-                }
+    const rectangle = try Element(Rectangle).init(
+        app.allocator,
+        .{
+            .styles = .{
+                .top = 25,
+                .left = 150,
+                .width = 500,
+                .height = 550,
+                .background_color = try color.process("#fff000"),
+                .border_top_width = 2,
+                .border_top_color = try color.process("#ffff")
             }
-        )
+        }
     );
+    _ = try app.root.appendChild(rectangle);
     _ = try app.root.appendChild(
         try Element(Rectangle).init(
             app.allocator,
@@ -106,12 +105,13 @@ fn init(app: *App) anyerror!void {
             .{
                 .styles = .{
                     .top = 100,
-                    .left = 100,
+                    .left = 50,
                     .width = 600,
                     .height = 300,
                     .sx = 50,
                     .sy = 50,
-                    .swidth = 50
+                    .swidth = 50,
+                    .sheight = 50
                 },
                 .texture_id = 1
             }

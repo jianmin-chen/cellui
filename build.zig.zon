@@ -1,0 +1,9 @@
+.{
+    .name = "cellui",
+    .version = "0.0.1",
+    .paths = .{
+        "src",
+        "deps"
+    },
+    .dependencies = .{}
+}
