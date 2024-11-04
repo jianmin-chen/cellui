@@ -5,8 +5,6 @@ const Build = std.Build;
 fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
     exe.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
     exe.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
-    exe.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/" });
-    exe.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib" });
 
     exe.addIncludePath(b.path("./deps"));
     exe.addCSourceFile(.{
@@ -24,11 +22,21 @@ fn attachDependencies(b: *Build, exe: *Build.Step.Compile) void {
 }
 
 fn attachDependenciesToModule(b: *Build, module: *Build.Module) void {
-    module.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/" });
-    module.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib" });
+    module.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
+    module.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
 
     module.addIncludePath(b.path("./deps"));
+    module.addCSourceFile(.{
+        .file = b.path("./deps/glad.c"),
+        .flags = &.{}
+    });
+    module.addCSourceFile(.{
+        .file = b.path("./deps/stb.c"),
+        .flags = &.{}
+    });
 
+    module.linkFramework("OpenGL", .{});
+    module.linkSystemLibrary("glfw", .{});
     module.linkSystemLibrary("freetype", .{});
 }
 
@@ -62,10 +70,17 @@ pub fn build(b: *Build) !void {
     	.root_source_file = b.path("src/font/root.zig"),
         .target = target
     });
-    attachDependenciesToModule(b, font);
+
+    font.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2/" });
+    font.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/freetype/2.13.3/lib" });
+
+    font.addIncludePath(b.path("./deps"));
+
+    font.linkSystemLibrary("freetype", .{});
 
     const cellui = b.addModule("cellui", .{
         .root_source_file = b.path("src/root.zig"),
+        .target = target,
         .imports = &.{
             .{ .name = "math", .module = math },
             .{ .name = "util", .module = util },
@@ -74,6 +89,8 @@ pub fn build(b: *Build) !void {
             .{ .name = "font", .module = font }
         }
     });
+
+    attachDependenciesToModule(b, cellui);
 
     const options = b.addOptions();
     cellui.addOptions("build", options);
