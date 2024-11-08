@@ -7,7 +7,7 @@ const style = @import("style");
 const Matrix4x4 = @import("math").Matrix4x4;
 
 pub const Image = @import("primitives/image.zig");
-pub const Rectangle = @import("primitives/rectangle.zig");
+pub const View = @import("primitives/view.zig");
 pub const Text = @import("primitives/text.zig");
 
 const Allocator = std.mem.Allocator;
@@ -18,7 +18,7 @@ pub fn Element(comptime T: type) type {
         allocator: Allocator,
         attributes: T.Attributes,
 
-        pub fn init(allocator: Allocator, attributes: T.Attributes) !*Element(T) {
+        pub fn from(allocator: Allocator, attributes: T.Attributes) !*Element(T) {
             const self = try allocator.create(Element(T));
             self.* = .{
                 .allocator = allocator,
@@ -133,7 +133,7 @@ pub const Node = struct {
 
 pub fn setup(allocator: Allocator, projection: Matrix4x4) !void {
     try Image.init(allocator);
-    try Rectangle.init(allocator);
+    try View.init(allocator);
     try Text.init(allocator);
     viewport(projection);
 }
@@ -146,7 +146,7 @@ pub fn viewport(projection: Matrix4x4) void {
         @ptrCast(&projection)
     );
     c.glUniformMatrix4fv(
-        Rectangle.shader.uniform("projection"),
+        View.shader.uniform("projection"),
         1,
         c.GL_FALSE,
         @ptrCast(&projection)
@@ -161,6 +161,6 @@ pub fn viewport(projection: Matrix4x4) void {
 
 pub fn cleanup(_: Allocator) void {
     Image.deinit();
-    Rectangle.deinit();
+    View.deinit();
     Text.deinit();
 }

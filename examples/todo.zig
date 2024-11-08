@@ -6,7 +6,7 @@ const ArrayList = std.ArrayList;
 const Element = cellui.Element;
 const Button = cellui.Button;
 const Input = cellui.Input;
-const Rectangle = cellui.Rectangle;
+const View = cellui.View;
 const Text = cellui.Text;
 const Signal = cellui.Signal;
 const color = cellui.color;
@@ -49,7 +49,7 @@ const Todo = struct {
 };
 
 fn root(app: *cellui.App) !*Element {
-    const wrapper = try Element(Rectangle).init(
+    const wrapper = try Element(View).init(
         app.allocator,
         .{
             .align_self = "center",
@@ -113,7 +113,7 @@ fn root(app: *cellui.App) !*Element {
     );
 
     try wrapper.appendChild(
-        try Element(Rectangle).init(
+        try Element(View).init(
             app.allocator,
             .{},
             .{ .id = "tasks" }

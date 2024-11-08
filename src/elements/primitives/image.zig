@@ -4,6 +4,7 @@ const c = @cImport({
 });
 const std = @import("std");
 const style = @import("style");
+const Float = @import("math.zig").Float;
 
 const Shader = @import("shader.zig");
 
@@ -118,10 +119,10 @@ pub const Styles = style.merge(
         min_filter: ?MipmapOption = .linear,
         mag_filter: ?MipmapOption = .linear,
 
-        sx: f32 = 0,
-        sy: f32 = 0,
-        swidth: ?f32 = null,
-        sheight: ?f32 = null
+        sx: Float = 0,
+        sy: Float = 0,
+        swidth: ?Float = null,
+        sheight: ?Float = null
     }
 );
 
@@ -141,10 +142,10 @@ pub const Texture = struct {
     vao: c_uint,
     vbo: c_uint,
 
-    width: f32,
-    height: f32,
+    width: Float,
+    height: Float,
 
-    pub fn init(instance: [INSTANCE_SIZE]f32) Texture {
+    pub fn init(instance: [INSTANCE_SIZE]Float) Texture {
         var vao: c_uint = undefined;
         var vbo: c_uint = undefined;
 
@@ -229,8 +230,8 @@ pub const Texture = struct {
         };
     }
 
-    pub fn increment(self: Texture, instance: [INSTANCE_SIZE - 2]f32) Texture {
-        const instance_data = instance ++ [_]f32{ self.width, self.height };
+    pub fn increment(self: Texture, instance: [INSTANCE_SIZE - 2]Float) Texture {
+        const instance_data = instance ++ [_]Float{ self.width, self.height };
 
         c.glBindBuffer(c.GL_ARRAY_BUFFER, self.vbo);
         c.glBufferSubData(
@@ -322,8 +323,8 @@ pub fn paint(attributes: Attributes) !void {
     const left = styles.left.?;
 
     if (attributes.texture) |data| {
-        const width: f32 = styles.width orelse @floatFromInt(attributes.texture_width.?);
-        const height: f32 = styles.height orelse @floatFromInt(attributes.texture_height.?);
+        const width: Float = styles.width orelse @floatFromInt(attributes.texture_width.?);
+        const height: Float = styles.height orelse @floatFromInt(attributes.texture_height.?);
         const texture_width = attributes.texture_width.?;
         const texture_height = attributes.texture_height.?;
 
@@ -386,8 +387,8 @@ pub fn paint(attributes: Attributes) !void {
         
         c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 4);
 
-        const swidth: f32 = styles.swidth orelse @floatFromInt(texture_width);
-        const sheight: f32 = styles.sheight orelse @floatFromInt(texture_height);
+        const swidth: Float = styles.swidth orelse @floatFromInt(texture_width);
+        const sheight: Float = styles.sheight orelse @floatFromInt(texture_height);
 
         try textures.put(
             texture,
@@ -404,8 +405,8 @@ pub fn paint(attributes: Attributes) !void {
         if (textures.get(id)) |texture| {
             const width = styles.width orelse texture.width;
             const height = styles.height orelse texture.height;
-            const swidth: f32 = styles.swidth orelse texture.width;
-            const sheight: f32 = styles.sheight orelse texture.height;
+            const swidth: Float = styles.swidth orelse texture.width;
+            const sheight: Float = styles.sheight orelse texture.height;
             try textures.put(
                 id,
                 texture.increment(

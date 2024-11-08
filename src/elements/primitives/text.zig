@@ -49,11 +49,12 @@ pub const vertex =
     \\out vec2 tex_coord;
     \\
     \\uniform mat4 projection;
+    \\uniform vec2 tex;
     \\
     \\void main() {
     \\	vec2 xy = base.xy * text.zw + text.xy;
     \\	gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\	tex_coord = base.zw * texcoord;
+    \\  tex_coord = base.zw * texcoord;
     \\}
 ;
 

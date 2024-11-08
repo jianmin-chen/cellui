@@ -6,7 +6,7 @@ const std = @import("std");
 pub const color = @import("color");
 pub const font = @import("font");
 const elements = @import("elements/root.zig");
-const math = @import("math");
+pub const math = @import("math");
 
 const Allocator = std.mem.Allocator;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
@@ -14,14 +14,15 @@ const panic = std.debug.panic;
 
 const Color = color.ColorPrimitive;
 
-const Element = elements.Element;
-const Node = elements.Node;
-const Image = elements.Image;
-const Rectangle = elements.Rectangle;
-const Text = elements.Text;
+pub const Element = elements.Element;
+pub const Node = elements.Node;
+pub const Image = elements.Image;
+pub const View = elements.View;
+pub const Text = elements.Text;
 
 const Matrix = math.Matrix;
 const Matrix4x4 = Matrix.Matrix4x4;
+pub const Float = math.Float;
 
 const Self = @This();
 pub const App = @This();
@@ -88,8 +89,8 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
     c.glEnable(c.GL_BLEND);
     c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
-    const width: f32 = @floatFromInt(options.initial_width);
-    const height: f32 = @floatFromInt(options.initial_height);
+    const width: Float = @floatFromInt(options.initial_width);
+    const height: Float = @floatFromInt(options.initial_height);
 
     var self: Self = .{
         .allocator = allocator,
@@ -108,7 +109,7 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
 
     self.root = try Node.wrap(
         allocator,
-         try Element(Rectangle).init(
+         try Element(View).from(
               allocator,
             .{
                 .styles = .{
@@ -121,7 +122,7 @@ pub fn setup(allocator: Allocator, options: Options, callback: Callback) !Self {
              }
           )
     );
-    // try self.root.paint();
+    try self.root.paint();
 
     try callback(&self);
 
@@ -171,7 +172,7 @@ fn processInput(self: *Self) void {
 
 pub fn render(_: *Self) !void {
     // Most of the work is made out to external calls.
-    try Rectangle.render();
+    try View.render();
     try Image.render();
     try Text.render();
 }

@@ -4,6 +4,7 @@ const c = @cImport({
     @cInclude("ft.h");
 });
 const std = @import("std");
+const Float = @import("math").Float;
 
 const Allocator = std.mem.Allocator;
 const StringHashMap = std.StringHashMap;
@@ -14,12 +15,12 @@ pub var ft_library: c.FT_Library = undefined;
 
 pub const Character = struct {
     grapheme: []u8,
-    top: f32,
-    left: f32,
-    width: f32,
-    height: f32,
-    bearing_x: f32,
-    bearing_y: f32,
+    top: Float,
+    left: Float,
+    width: Float,
+    height: Float,
+    bearing_x: Float,
+    bearing_y: Float,
     advance_x: c_long,
     advance_y: c_long
 };
@@ -68,7 +69,7 @@ pub const Font = struct {
         const max_dimensions =
             (1 + (size.metrics.height >> 6)) *
                 @as(c_long, @intFromFloat(
-                    @ceil(@sqrt(@as(f64, @floatFromInt(self.num_glyphs))))
+                    @ceil(@sqrt(@as(Float, @floatFromInt(self.num_glyphs))))
                 ));
         while (self.atlas_width < max_dimensions) self.atlas_width <<= 1;
         self.atlas_height = self.atlas_width;
@@ -179,7 +180,7 @@ pub const FontSDF = struct {
         const max_dimensions =
             (1 + (size.metrics.height >> 6)) *
                 @as(c_long, @intFromFloat(
-                    @ceil(@sqrt(@as(f64, @floatFromInt(self.num_glyphs))))
+                    @ceil(@sqrt(@as(Float, @floatFromInt(self.num_glyphs))))
                 ));
         while (self.atlas_width < max_dimensions) self.atlas_width <<= 1;
         self.atlas = try allocator.alloc(u8, self.atlas_width * self.atlas_height);

@@ -1,9 +1,11 @@
+const Float = @import("types.zig").Float;
+
 const Self = @This();
 
-pub const Matrix4x4 = [4][4]f32;
+pub const Matrix4x4 = [4][4]Float;
 
-pub fn ortho(left: f32, right: f32, bottom: f32, top: f32) Matrix4x4 {
-    var matrix: Matrix4x4 = [_][4]f32{[_]f32{0} ** 4} ** 4;
+pub fn ortho(left: Float, right: Float, bottom: Float, top: Float) Matrix4x4 {
+    var matrix: Matrix4x4 = [_][4]Float{[_]Float{0} ** 4} ** 4;
     matrix[0][0] = 2 / (right - left);
     matrix[1][1] = 2 / (top - bottom);
     matrix[2][2] = -1;

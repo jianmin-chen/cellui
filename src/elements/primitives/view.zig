@@ -15,15 +15,15 @@ const Self = @This();
 const VERTEX_SIZE = 2;
 const VERTICES_SIZE = VERTEX_SIZE * 4;
 
-const RECTANGLE_SIZE = 4;
+const VIEW_SIZE = 4;
 const COLOR_SIZE = 4;
 const RADII_SIZE = 4;
 const BORDER_SIZE = 4;
-const INSTANCE_SIZE = RECTANGLE_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * 5;
+const INSTANCE_SIZE = VIEW_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * 5;
 
 const INDICES_SIZE = 6;
 
-const MAX_RECTANGLES = std.math.maxInt(c_int);
+const MAX_VIEWS = std.math.maxInt(c_int);
 
 pub const vertex = 
     \\#version 330 core
@@ -92,7 +92,7 @@ pub var base_vbo: c_uint = undefined;
 pub var instanced_vbo: c_uint = undefined;
 pub var ebo: c_uint = undefined;
 
-pub var rectangle_count: usize = 0;
+pub var view_count: usize = 0;
 
 pub fn init(_: Allocator) !void {
     shader = try Shader.init(vertex, fragment);
@@ -134,7 +134,7 @@ pub fn init(_: Allocator) !void {
     c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_RECTANGLES,
+        @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_VIEWS,
         null,
         c.GL_DYNAMIC_DRAW
     );
@@ -142,7 +142,7 @@ pub fn init(_: Allocator) !void {
     // Rectangle = { x, y, width, height }
     c.glVertexAttribPointer(
         1,
-        RECTANGLE_SIZE,
+        VIEW_SIZE,
         c.GL_FLOAT,
         c.GL_FALSE,
         INSTANCE_SIZE * @sizeOf(c.GLfloat),
@@ -152,7 +152,7 @@ pub fn init(_: Allocator) !void {
     c.glVertexAttribDivisor(1, 1);
 
     // Color
-    const color_offset: *const anyopaque = @ptrFromInt(RECTANGLE_SIZE * @sizeOf(c.GLfloat));
+    const color_offset: *const anyopaque = @ptrFromInt(VIEW_SIZE * @sizeOf(c.GLfloat));
     c.glVertexAttribPointer(
         2,
         COLOR_SIZE,
@@ -165,7 +165,7 @@ pub fn init(_: Allocator) !void {
     c.glVertexAttribDivisor(2, 1);
 
     // Radii
-    const radii_offset: *const anyopaque = @ptrFromInt((RECTANGLE_SIZE + COLOR_SIZE) * @sizeOf(c.GLfloat));
+    const radii_offset: *const anyopaque = @ptrFromInt((VIEW_SIZE + COLOR_SIZE) * @sizeOf(c.GLfloat));
     c.glVertexAttribPointer(
         3,
         RADII_SIZE,
@@ -179,7 +179,7 @@ pub fn init(_: Allocator) !void {
 
     // Border
     for (0..5) |offset| {
-        const border_offset: *const anyopaque = @ptrFromInt((RECTANGLE_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * offset) * @sizeOf(c.GLfloat));
+        const border_offset: *const anyopaque = @ptrFromInt((VIEW_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * offset) * @sizeOf(c.GLfloat));
         c.glVertexAttribPointer(
             @intCast(4 + offset),
             BORDER_SIZE,
@@ -243,12 +243,12 @@ pub fn paint(attributes: Attributes) !void {
 	c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
 	c.glBufferSubData(
 	    c.GL_ARRAY_BUFFER,
-		@as(c.GLint, @intCast(rectangle_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
+		@as(c.GLint, @intCast(view_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
 		@sizeOf(c.GLfloat) * INSTANCE_SIZE,
 		@ptrCast(&instance[0])
 	);
 
-	rectangle_count += 1;
+	view_count += 1;
 }
 
 pub fn render() !void {
@@ -261,6 +261,6 @@ pub fn render() !void {
 		@intCast(INDICES_SIZE),
 		c.GL_UNSIGNED_INT,
 		null,
-		@intCast(rectangle_count)
+		@intCast(view_count)
 	);
 }

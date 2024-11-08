@@ -4,9 +4,11 @@ const math = @import("math");
 const Allocator = std.mem.Allocator;
 const JSON = std.json.ArrayHashMap([]const u8);
 
+const Float = math.Float;
+
 const Self = @This();
 
-pub const ColorPrimitive = [4]f32;
+pub const ColorPrimitive = [4]Float;
 pub const transparent = ColorPrimitive{ 0.0, 0.0, 0.0, 1.0 };
 
 pub const ColorKind = enum { primitive, hex };
@@ -19,8 +21,8 @@ repr: ColorPrimitive = transparent,
 
 pub fn setup(allocator: Allocator) !void {
     _ = allocator;
-    
-    // const file= try std.fs.cwd().openFile(defaults_location, .{});
+
+    // const file = try std.fs.cwd().openFile(defaults_location, .{});
     // defer file.close();
 
     // const buf = try allocator.alloc(u8, try file.getEndPos());
@@ -61,7 +63,7 @@ pub fn parse(_color: []const u8) !Self {
             const chunk = color[i * chunk_len..i * chunk_len + chunk_len];
             var repr = try std.fmt.parseInt(usize, chunk, 16);
             if (chunk.len == 1) repr = (repr << 4) | repr;
-            self.repr[i] = @as(f32, @floatFromInt(repr)) / 255.0;
+            self.repr[i] = @as(Float, @floatFromInt(repr)) / 255.0;
         }
     } else {
 
@@ -75,7 +77,7 @@ pub fn process(color: []const u8) !ColorPrimitive {
 }
 
 pub fn random() !ColorPrimitive {
-    return [4]f32{
+    return [4]Float{
         try math.randomFloat(0, 1),
         try math.randomFloat(0, 1),
         try math.randomFloat(0, 1),
