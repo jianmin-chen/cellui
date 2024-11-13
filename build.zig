@@ -43,9 +43,51 @@ pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const cellui = b.addModule("cellui", .{
+        .root_source_file = b.path("src/entry.zig"),
+        .target = target
+    });
+
+    cellui.addIncludePath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/include" });
+    cellui.addLibraryPath(Build.LazyPath{ .cwd_relative = "/opt/homebrew/Cellar/glfw/3.4/lib" });
+
+    cellui.addIncludePath(b.path("./deps"));
+    cellui.addCSourceFile(.{
+        .file = b.path("./deps/glad.c"),
+        .flags = &.{}
+    });
+
+    cellui.linkFramework("OpenGL", .{});
+    cellui.linkSystemLibrary("glfw", .{});
+    cellui.linkSystemLibrary("freetype", .{});
+
     const math = b.addModule("math", .{
         .root_source_file = b.path("src/math/root.zig")
     });
+
+    cellui.addImport("math", math);
+
+    const util = b.addModule("util", .{
+        .root_source_file = b.path("src/util/root.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "math", .module = math }
+        }
+    });
+
+    util.addIncludePath(b.path("./deps"));
+
+    cellui.addImport("util", util);
+
+    const style = b.addModule("style", .{
+        .root_source_file = b.path("src/element/style.zig"),
+        .imports = &.{
+            .{ .name = "math", .module = math },
+            .{ .name = "util", .module = util }
+        }
+    });
+
+    cellui.addImport("style", style);
 
     const font = b.addModule("font", .{
         .root_source_file = b.path("src/font/root.zig"),
@@ -62,43 +104,16 @@ pub fn build(b: *Build) !void {
 
     font.linkSystemLibrary("freetype", .{});
 
-    const util = b.addModule("util", .{
-        .root_source_file = b.path("src/util/root.zig"),
-        .target = target,
-        .imports = &.{
-            .{ .name = "math", .module = math }
-        }
-    });
-
-    const style = b.addModule("style", .{
-        .root_source_file = b.path("src/element/style.zig"),
-        .imports = &.{
-            .{ .name = "math", .module = math },
-            .{ .name = "util", .module = util }
-        }
-    });
-
-    const cellui = b.addModule("cellui", .{
-        .root_source_file = b.path("src/entry.zig"),
-        .target = target,
-        .imports = &.{
-            .{ .name = "math", .module = math },
-            .{ .name = "font", .module = font },
-            .{ .name = "util", .module = util },
-            .{ .name = "style", .module = style }
-        }
-    });
-
-    attachDependenciesToModule(b, cellui);
+    cellui.addImport("font", font);
 
     const exe = b.addExecutable(.{
         .name = "test",
         .root_source_file = b.path("src/test.zig"),
         .target = target,
-        .optimize = optimize,
+        .optimize = optimize
     });
 
-    exe.root_module.addImport("math", math);
+    exe.root_module.addImport("cellui", cellui);
 
     const run_exe = b.addRunArtifact(exe);
     const run_step = b.step("run", "Test rendering");

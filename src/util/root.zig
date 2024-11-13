@@ -1,6 +1,7 @@
 const std = @import("std");
 pub const color = @import("color.zig");
 pub const queue = @import("queue.zig");
+pub const Shader = @import("shader.zig");
 
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;

@@ -3,18 +3,23 @@ const c = @cImport({
     @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
-const elements = @import("element/root.zig");
-const math = @import("math");
-const util = @import("util");
+pub const element = @import("element/root.zig");
+pub const font = @import("font");
+pub const math = @import("math");
+pub const style = @import("style");
+pub const util = @import("util");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const StringHashMap = std.StringHashMap;
 
-const Node = elements.Node;
-const View = elements.View;
+pub const Node = element.Node;
+pub const Element = element.Element;
+pub const View = element.View;
 
-const color = util.color;
+pub const Rectangle = element.Rectangle;
+
+pub const color = util.color;
 const ColorPrimitive = color.ColorPrimitive;
 
 const Matrix = math.Matrix;
