@@ -6,6 +6,7 @@ const std = @import("std");
 pub const element = @import("element/root.zig");
 pub const font = @import("font");
 pub const math = @import("math");
+pub const layout = @import("layout/root.zig");
 pub const style = @import("style");
 pub const util = @import("util");
 
@@ -39,10 +40,18 @@ pub const InitialOptions = struct {
 
     projection: Projection = .ortho,
     debug: bool = false,
-    extend_render_stack: ?fn(
-        allocator: Allocator,
-        render_stack: *ArrayList(View) 
-    ) anyerror!void = null
+
+    // If user wants to use a custom render stack,
+    // they can pass a callback function here.
+    // 
+    // The function can do whatever,
+    // but ideally it should append views to `render_stack`.
+    //
+    // For an example, take a look at `defaultRenderStack()`.
+    render_stack: fn(
+        app: *const Self,
+        render_stack: *ArrayList(View)
+    ) anyerror!void = defaultRenderStack
 };
 
 debug: bool = false,
@@ -60,9 +69,11 @@ projection: Matrix4x4,
 clear_background: ColorPrimitive,
 root: *Node = undefined,
 
-// While a render stack is unnecessary since orthographic projection supports depth buffering,
-// I'm keeping this intact until I'm completely sure there's no situations
-// where this would come in handy.
+// While we don't need a stack for rendering,
+// we need some kind of ArrayList to keep track of what we're rendering.
+//
+// Not sure if there's a case where having a ordered stack might be useful,
+// since we do already have access to a depth buffer to draw elements with z-index.
 render_stack: ArrayList(View),
 
 pub fn from(
@@ -124,11 +135,10 @@ pub fn from(
         .render_stack = ArrayList(View).init(allocator)
     };
 
-    if (options.extend_render_stack) |extend_render_stack| {
-        try extend_render_stack(self.allocator, &self.render_stack);
-    } else try View.defaults(self.allocator, &self.render_stack);
+    try options.render_stack(&self, &self.render_stack);
 
     self.root = try paint_root(&self);
+    try layout.calculate();
 
     return self;
 }
@@ -139,8 +149,17 @@ pub fn deinit(self: *Self) void {
     self.render_stack.deinit();
 }
 
-pub fn render(self: *Self) !void {
-    _ = self;
+fn defaultRenderStack(self: *const Self, render_stack: *ArrayList(View)) !void {
+    try Rectangle.init(self.allocator);
+
+    c.glUniformMatrix4fv(
+        Rectangle.shader.uniform("projection"),
+        1,
+        c.GL_FALSE,
+        @ptrCast(&self.projection)
+    );
+
+    try render_stack.append(try View.from(Rectangle));
 }
 
 pub fn launch(self: *Self) !void {
@@ -154,7 +173,6 @@ pub fn launch(self: *Self) !void {
         1.0
     );
     c.glClear(c.GL_COLOR_BUFFER_BIT);
-    c.glfwSwapBuffers(self.window);
 
     while (c.glfwWindowShouldClose(self.window) == c.GL_FALSE) {
         if (self.debug) {
@@ -167,8 +185,12 @@ pub fn launch(self: *Self) !void {
             }
         }
 
-        // c.glfwSwapBuffers(@ptrCast(self.window));
-        // c.glfwPollEvents();
-        c.glfwWaitEvents();
+        for (self.render_stack.items) |view| {
+            try view.render();
+        }
+
+        c.glfwSwapBuffers(self.window);
+        c.glfwPollEvents();
+        // c.glfwWaitEvents();
     }
 }

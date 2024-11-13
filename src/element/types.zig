@@ -1,4 +1,8 @@
+const c = @cImport({
+    @cInclude("glad/glad.h");
+});
 const std = @import("std");
+const math = @import("math");
 const style = @import("style");
 const util = @import("util");
 const Rectangle = @import("primitives/rectangle.zig");
@@ -6,6 +10,8 @@ const Rectangle = @import("primitives/rectangle.zig");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const assert = std.debug.assert;
+
+const Matrix4x4 = math.Matrix4x4;
 
 // An element is essentially an instance of a "view".
 // Checking is done at compile-time by the compiler to ensure that passed types contain:
@@ -38,6 +44,8 @@ pub fn Element(comptime T: type) type {
             // that is, if it can't hold children, e.g. `View(Image)`.
             assert(!(@typeInfo(@TypeOf(children)).Struct.fields.len == 0 and T.is_void_element));
 
+            try element.paint();
+
             return Node.from(allocator, element, children);
         }
 
@@ -46,10 +54,9 @@ pub fn Element(comptime T: type) type {
             self.allocator.destroy(self);
         }
 
-        pub fn paint(self: *Element(T), t: *anyopaque) !void {
+        pub fn paint(self: *Element(T)) !void {
             try style.resolve(@ptrCast(&self.attributes.styles));
-            const view: *T = @ptrCast(@alignCast(t));
-            try view.paint(self.attributes.*);
+            try T.paint(self.attributes.*);
         }
 
         pub fn format(
@@ -74,7 +81,7 @@ pub const Node = struct {
 
     const VTable = struct {
         deinit: *const fn (ptr: *anyopaque) void,
-        paint: *const fn (ptr: *anyopaque, view: *anyopaque) anyerror!void
+        paint: *const fn (ptr: *anyopaque) anyerror!void
     };
 
     allocator: Allocator,
@@ -107,9 +114,9 @@ pub const Node = struct {
                 self.deinit();
             }
 
-            fn paint(ptr: *anyopaque, view: *anyopaque) anyerror!void {
+            fn paint(ptr: *anyopaque) !void {
                 const self: Ptr align(alignment) = @ptrCast(@alignCast(ptr));
-                try self.paint(view);
+                try self.paint();
             }
         };
 
@@ -168,27 +175,53 @@ pub const Node = struct {
     }
 };
 
-// This is used to type erase a specific view,
-// used where a lack of typing is needed, 
+// This is used to type erase a specific view, 
+// used where a lack of typing is needed,
 // such as render_stack in `src/root.zig`.
+//
+// This makes it easy to write custom views,
+// while adhering to the shape of an interface.
 pub const View = struct {
-    const Self = @This();
+    const VTable = struct {
+        deinit: *const fn () void,
+        render: *const fn () anyerror!void
+    };
 
-    view: *anyopaque,
+    methods: *const VTable,
 
-    pub fn from(view: anytype) Self {
-        const Ptr = @TypeOf(view);
+    pub fn from(view: anytype) !View {
+        const ViewType = view;
+
+        const Ptr = @TypeOf(ViewType);
         const PtrInfo = @typeInfo(Ptr);
 
-        assert(PtrInfo == .Pointer);
+        // More assertions would probably be handy here,
+        // but the compiler takes care of a lot of type checks for us.
+        assert(PtrInfo == .Type);
 
-        return .{ .view = view };
+        const impl = struct {
+            fn deinit() void {
+                ViewType.deinit();
+            }
+
+            fn render() !void {
+                try ViewType.render();
+            }
+        };
+
+        return .{
+            .methods = &.{
+                .deinit = impl.deinit,
+                .render = impl.render
+            }
+        };
     }
 
-    pub fn defaults(
-        allocator: Allocator,
-        render_stack: *ArrayList(Self)
-    ) !void {
-        try render_stack.append(Self.from(try Rectangle.init(allocator)));
+    pub fn deinit(self: View) void {
+        self.methods.deinit();
+    }
+
+    pub fn render(self: View) !void {
+        try self.methods.render();
     }
 };

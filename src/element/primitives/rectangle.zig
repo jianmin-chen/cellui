@@ -1,15 +1,21 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
+    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
 const style = @import("style");
-const Shader = @import("util").Shader;
+const util = @import("util");
 
 const Allocator = std.mem.Allocator;
 
+const Color = util.color.ColorPrimitive;
+const Shader = util.Shader;
+
 const Self = @This();
 
-const VERTEX_SIZE = 3;
+pub const is_void_element = false;
+
+const VERTEX_SIZE = 2;
 const VERTICES_SIZE = VERTEX_SIZE * 4;
 
 const RECTANGLE_SIZE = 4;
@@ -25,7 +31,7 @@ const MAX_RECTANGLES = std.math.maxInt(c_int);
 pub const vertex = 
     \\#version 330 core
     \\
-    \\layout (location = 0) in vec3 base;
+    \\layout (location = 0) in vec2 base;
     \\layout (location = 1) in vec4 rectangle;
     \\layout (location = 2) in vec4 color;
     \\layout (location = 3) in vec4 radii;
@@ -35,18 +41,30 @@ pub const vertex =
     \\layout (location = 7) in vec4 border_bottom;
     \\layout (location = 8) in vec4 border_left;
     \\
+    \\out vec4 rect_dim;
+    \\out vec4 rect_color;
+    \\out vec4 rect_radii;
     \\out mat4 proj;
     \\
     \\uniform mat4 projection;
     \\
     \\void main() {
-    \\  vec2 xy = base.xy * rectangle.zw + rectangle.xy;
-    \\  gl_Position = projection * vec4(xy, base.z, 1.0);
+    \\  vec2 xy = base * rectangle.zw + rectangle.xy;
+    \\  gl_Position = projection * vec4(xy, 0.0, 1.0);
+    \\  rect_dim = rectangle;
+    \\  rect_color = color;
+    \\  rect_radii = radii;
+    \\  proj = projection;
     \\}
 ;
 
 pub const fragment = 
     \\#version 330 core
+    \\
+    \\in vec4 rect_dim;
+    \\in vec4 rect_color;
+    \\in vec4 rect_radii;
+    \\in mat4 proj;
     \\
     \\out vec4 out_color;
     \\
@@ -62,34 +80,32 @@ pub const fragment =
     \\}
 ;
 
-pub const Styles = style.ViewStyles;
+pub const Styles = style.merge(
+    style.ViewStyles,
+    struct {}
+);
 
 pub const Attributes = struct {
     styles: Styles
 };
 
-pub const is_void_element = false;
+pub var shader: Shader = undefined;
+pub var vao: c_uint = undefined;
+pub var base_vbo: c_uint = undefined;
+pub var instanced_vbo: c_uint = undefined;
+pub var ebo: c_uint = undefined;
 
-shader: Shader,
-vao: c_uint = undefined,
-base_vbo: c_uint = undefined,
-instanced_vbo: c_uint = undefined,
-ebo: c_uint = undefined,
+pub var rectangle_count: usize = 0;
 
-rectangle_count: usize = 0,
+pub fn init(_: Allocator) !void {
+    shader = try Shader.compile(vertex, fragment);
 
-pub fn init(allocator: Allocator) !*Self {
-    var self = try allocator.create(Self);
-    self.* = .{
-        .shader = try Shader.compile(vertex, fragment)
-    };
+    c.glGenVertexArrays(1, &vao);
+    c.glGenBuffers(1, &base_vbo);
+    c.glGenBuffers(1, &instanced_vbo);
+    c.glGenBuffers(1, &ebo);
 
-    c.glGenVertexArrays(1, &self.vao);
-    c.glGenBuffers(1, &self.base_vbo);
-    c.glGenBuffers(1, &self.instanced_vbo);
-    c.glGenBuffers(1, &self.ebo);
-
-    c.glBindVertexArray(self.vao);
+    c.glBindVertexArray(vao);
 
     // Base rectangle: 1x1 pixel in top-left corner.
     const base_vertices = [_]c.GLfloat{
@@ -99,7 +115,7 @@ pub fn init(allocator: Allocator) !*Self {
         1, 1
     };
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.base_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
         @sizeOf(c.GLfloat) * VERTICES_SIZE,
@@ -118,7 +134,7 @@ pub fn init(allocator: Allocator) !*Self {
     );
     c.glEnableVertexAttribArray(0);
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.instanced_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
         @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_RECTANGLES,
@@ -184,24 +200,22 @@ pub fn init(allocator: Allocator) !*Self {
         3, 2, 1
     };
 
-    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.ebo);
+    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
     c.glBufferData(
         c.GL_ELEMENT_ARRAY_BUFFER,
         @sizeOf(c.GLuint) * INDICES_SIZE,
         @ptrCast(&indices[0]),
         c.GL_STATIC_DRAW
     );
-
-    return self;
 }
 
-pub fn deinit(self: *Self) void {
-    c.glDeleteVertexArrays(1, &self.vao);
-    self.shader.deinit();
+pub fn deinit() void {
+    c.glDeleteVertexArrays(1, &vao);
+    shader.deinit();
 }
 
-pub fn paint(self: *Self, attributes: Attributes) !void {
-    c.glBindVertexArray(self.vao);
+pub fn paint(attributes: Attributes) !void {
+    c.glBindVertexArray(vao);
 
     const styles = attributes.styles;
 
@@ -219,35 +233,37 @@ pub fn paint(self: *Self, attributes: Attributes) !void {
     const height = styles.height.?;
 
     const instance = [_]c.GLfloat{
-	    left, top, width, height,
-		background_color[0], background_color[1], background_color[2], background_color[3],
-		border_radii[0], border_radii[1], border_radii[2], border_radii[3],
-		border_width[0], border_width[1], border_width[2], border_width[3],
-		border_top[0], border_top[1], border_top[2], border_top[3],
-		border_right[0], border_right[1], border_right[2], border_right[3],
-		border_bottom[0], border_bottom[1], border_bottom[2], border_bottom[3],
-		border_left[0], border_left[1], border_left[2], border_left[3],
-	};
+        left, top, width, height,
+        background_color[0], background_color[1], background_color[2], background_color[3],
+        border_radii[0], border_radii[1], border_radii[2], border_radii[3],
+        border_width[0], border_width[1], border_width[2], border_width[3],
+        border_top[0], border_top[1], border_top[2], border_top[3],
+        border_right[0], border_right[1], border_right[2], border_right[3],
+        border_bottom[0], border_bottom[1], border_bottom[2], border_bottom[3],
+        border_left[0], border_left[1], border_left[2], border_left[3],
+    };
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.instanced_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
     c.glBufferSubData(
         c.GL_ARRAY_BUFFER,
-        @as(c.GLint, @intCast(self.rectangle_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
+        @as(c.GLint, @intCast(rectangle_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
         @sizeOf(c.GLfloat) * INSTANCE_SIZE,
         @ptrCast(&instance[0])
     );
 
-    self.rectangle_count += 1;
+    rectangle_count += 1;
 }
 
-pub fn render(self: *Self) !void {
-    self.shader.use();
-    c.glBindVertexArray(self.vao);
+pub fn render() !void {
+    shader.use();
+
+    c.glBindVertexArray(vao);
+
     c.glDrawElementsInstanced(
         c.GL_TRIANGLES,
         @intCast(INDICES_SIZE),
         c.GL_UNSIGNED_INT,
         null,
-        @intCast(self.rectangle_count)
+        @intCast(rectangle_count)
     );
 }

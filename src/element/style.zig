@@ -64,5 +64,7 @@ pub const ViewStyles = struct {
 };
 
 pub fn resolve(styles: *ViewStyles) !void {
-    _ = styles;
+    if (styles.background_color) |background_color| {
+        styles._background_color = try color.parse(background_color);
+    } else styles._background_color = color.default;
 }
