@@ -1,7 +1,5 @@
 const Float = @import("types.zig").Float;
 
-const Self = @This();
-
 pub const Matrix4x4 = [4][4]Float;
 
 pub fn ortho(left: Float, right: Float, bottom: Float, top: Float) Matrix4x4 {

@@ -1,34 +1,31 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
 const style = @import("style");
-const util = @import("util");
-const Color = @import("color").ColorPrimitive;
-const Shader = @import("shader.zig");
+const Shader = @import("util").Shader;
 
 const Allocator = std.mem.Allocator;
 
 const Self = @This();
 
-const VERTEX_SIZE = 2;
+const VERTEX_SIZE = 3;
 const VERTICES_SIZE = VERTEX_SIZE * 4;
 
-const VIEW_SIZE = 4;
+const RECTANGLE_SIZE = 4;
 const COLOR_SIZE = 4;
 const RADII_SIZE = 4;
 const BORDER_SIZE = 4;
-const INSTANCE_SIZE = VIEW_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * 5;
+const INSTANCE_SIZE = RECTANGLE_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * 5;
 
 const INDICES_SIZE = 6;
 
-const MAX_VIEWS = std.math.maxInt(c_int);
+const MAX_RECTANGLES = std.math.maxInt(c_int);
 
 pub const vertex = 
     \\#version 330 core
     \\
-    \\layout (location = 0) in vec2 base;
+    \\layout (location = 0) in vec3 base;
     \\layout (location = 1) in vec4 rectangle;
     \\layout (location = 2) in vec4 color;
     \\layout (location = 3) in vec4 radii;
@@ -38,30 +35,18 @@ pub const vertex =
     \\layout (location = 7) in vec4 border_bottom;
     \\layout (location = 8) in vec4 border_left;
     \\
-    \\out vec4 rect_dim;
-    \\out vec4 rect_color;
-    \\out vec4 rect_radii;
     \\out mat4 proj;
     \\
     \\uniform mat4 projection;
     \\
     \\void main() {
-    \\  vec2 xy = base * rectangle.zw + rectangle.xy;
-    \\  gl_Position = projection * vec4(xy, 0.0, 1.0);
-    \\  rect_dim = rectangle;
-    \\  rect_color = color;
-    \\  rect_radii = radii;
-    \\  proj = projection;
+    \\  vec2 xy = base.xy * rectangle.zw + rectangle.xy;
+    \\  gl_Position = projection * vec4(xy, base.z, 1.0);
     \\}
 ;
 
 pub const fragment = 
     \\#version 330 core
-    \\
-    \\in vec4 rect_dim;
-    \\in vec4 rect_color;
-    \\in vec4 rect_radii;
-    \\in mat4 proj;
     \\
     \\out vec4 out_color;
     \\
@@ -77,32 +62,34 @@ pub const fragment =
     \\}
 ;
 
-pub const Styles = style.merge(
-    style.ViewStyles,
-    struct {}
-);
+pub const Styles = style.ViewStyles;
 
 pub const Attributes = struct {
     styles: Styles
 };
 
-pub var shader: Shader = undefined;
-pub var vao: c_uint = undefined;
-pub var base_vbo: c_uint = undefined;
-pub var instanced_vbo: c_uint = undefined;
-pub var ebo: c_uint = undefined;
+pub const is_void_element = false;
 
-pub var view_count: usize = 0;
+shader: Shader,
+vao: c_uint = undefined,
+base_vbo: c_uint = undefined,
+instanced_vbo: c_uint = undefined,
+ebo: c_uint = undefined,
 
-pub fn init(_: Allocator) !void {
-    shader = try Shader.init(vertex, fragment);
+rectangle_count: usize = 0,
 
-    c.glGenVertexArrays(1, &vao);
-    c.glGenBuffers(1, &base_vbo);
-    c.glGenBuffers(1, &instanced_vbo);
-    c.glGenBuffers(1, &ebo);
+pub fn init(allocator: Allocator) !*Self {
+    var self = try allocator.create(Self);
+    self.* = .{
+        .shader = try Shader.compile(vertex, fragment)
+    };
 
-    c.glBindVertexArray(vao);
+    c.glGenVertexArrays(1, &self.vao);
+    c.glGenBuffers(1, &self.base_vbo);
+    c.glGenBuffers(1, &self.instanced_vbo);
+    c.glGenBuffers(1, &self.ebo);
+
+    c.glBindVertexArray(self.vao);
 
     // Base rectangle: 1x1 pixel in top-left corner.
     const base_vertices = [_]c.GLfloat{
@@ -112,7 +99,7 @@ pub fn init(_: Allocator) !void {
         1, 1
     };
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, base_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.base_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
         @sizeOf(c.GLfloat) * VERTICES_SIZE,
@@ -131,10 +118,10 @@ pub fn init(_: Allocator) !void {
     );
     c.glEnableVertexAttribArray(0);
 
-    c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.instanced_vbo);
     c.glBufferData(
         c.GL_ARRAY_BUFFER,
-        @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_VIEWS,
+        @sizeOf(c.GLfloat) * INSTANCE_SIZE * MAX_RECTANGLES,
         null,
         c.GL_DYNAMIC_DRAW
     );
@@ -142,7 +129,7 @@ pub fn init(_: Allocator) !void {
     // Rectangle = { x, y, width, height }
     c.glVertexAttribPointer(
         1,
-        VIEW_SIZE,
+        RECTANGLE_SIZE,
         c.GL_FLOAT,
         c.GL_FALSE,
         INSTANCE_SIZE * @sizeOf(c.GLfloat),
@@ -152,7 +139,7 @@ pub fn init(_: Allocator) !void {
     c.glVertexAttribDivisor(1, 1);
 
     // Color
-    const color_offset: *const anyopaque = @ptrFromInt(VIEW_SIZE * @sizeOf(c.GLfloat));
+    const color_offset: *const anyopaque = @ptrFromInt(RECTANGLE_SIZE * @sizeOf(c.GLfloat));
     c.glVertexAttribPointer(
         2,
         COLOR_SIZE,
@@ -165,7 +152,7 @@ pub fn init(_: Allocator) !void {
     c.glVertexAttribDivisor(2, 1);
 
     // Radii
-    const radii_offset: *const anyopaque = @ptrFromInt((VIEW_SIZE + COLOR_SIZE) * @sizeOf(c.GLfloat));
+    const radii_offset: *const anyopaque = @ptrFromInt((RECTANGLE_SIZE + COLOR_SIZE) * @sizeOf(c.GLfloat));
     c.glVertexAttribPointer(
         3,
         RADII_SIZE,
@@ -179,7 +166,7 @@ pub fn init(_: Allocator) !void {
 
     // Border
     for (0..5) |offset| {
-        const border_offset: *const anyopaque = @ptrFromInt((VIEW_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * offset) * @sizeOf(c.GLfloat));
+        const border_offset: *const anyopaque = @ptrFromInt((RECTANGLE_SIZE + COLOR_SIZE + RADII_SIZE + BORDER_SIZE * offset) * @sizeOf(c.GLfloat));
         c.glVertexAttribPointer(
             @intCast(4 + offset),
             BORDER_SIZE,
@@ -197,39 +184,41 @@ pub fn init(_: Allocator) !void {
         3, 2, 1
     };
 
-    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, ebo);
+    c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.ebo);
     c.glBufferData(
         c.GL_ELEMENT_ARRAY_BUFFER,
         @sizeOf(c.GLuint) * INDICES_SIZE,
         @ptrCast(&indices[0]),
         c.GL_STATIC_DRAW
     );
+
+    return self;
 }
 
-pub fn deinit() void {
-    c.glDeleteVertexArrays(1, &vao);
-    shader.deinit();
+pub fn deinit(self: *Self) void {
+    c.glDeleteVertexArrays(1, &self.vao);
+    self.shader.deinit();
 }
 
-pub fn paint(attributes: Attributes) !void {
-    c.glBindVertexArray(vao);
+pub fn paint(self: *Self, attributes: Attributes) !void {
+    c.glBindVertexArray(self.vao);
 
     const styles = attributes.styles;
 
-    const background_color = styles.background_color.?;
-	const border_radii = styles.border_radius.?;
-	const border_width = styles.border_width.?;
-	const border_color = styles.border_color.?;
-	const border_top = border_color[0];
-	const border_right = border_color[1];
-	const border_bottom = border_color[2];
-	const border_left = border_color[3];
-	const left = styles.left.?;
-	const top = styles.top.?;
-	const width = styles.width.?;
-	const height = styles.height.?;
+    const background_color = styles._background_color;
+    const border_radii = styles.border_radius.?;
+    const border_width = styles.border_width.?;
+    const border_color = styles.border_color.?;
+    const border_top = border_color[0];
+    const border_right = border_color[1];
+    const border_bottom = border_color[2];
+    const border_left = border_color[3];
+    const left = styles.left.?;
+    const top = styles.top.?;
+    const width = styles.width.?;
+    const height = styles.height.?;
 
-	const instance = [_]c.GLfloat{
+    const instance = [_]c.GLfloat{
 	    left, top, width, height,
 		background_color[0], background_color[1], background_color[2], background_color[3],
 		border_radii[0], border_radii[1], border_radii[2], border_radii[3],
@@ -240,27 +229,25 @@ pub fn paint(attributes: Attributes) !void {
 		border_left[0], border_left[1], border_left[2], border_left[3],
 	};
 
-	c.glBindBuffer(c.GL_ARRAY_BUFFER, instanced_vbo);
-	c.glBufferSubData(
-	    c.GL_ARRAY_BUFFER,
-		@as(c.GLint, @intCast(view_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
-		@sizeOf(c.GLfloat) * INSTANCE_SIZE,
-		@ptrCast(&instance[0])
-	);
+    c.glBindBuffer(c.GL_ARRAY_BUFFER, self.instanced_vbo);
+    c.glBufferSubData(
+        c.GL_ARRAY_BUFFER,
+        @as(c.GLint, @intCast(self.rectangle_count * INSTANCE_SIZE)) * @sizeOf(c.GLfloat),
+        @sizeOf(c.GLfloat) * INSTANCE_SIZE,
+        @ptrCast(&instance[0])
+    );
 
-	view_count += 1;
+    self.rectangle_count += 1;
 }
 
-pub fn render() !void {
-	shader.use();
-
-	c.glBindVertexArray(vao);
-
-	c.glDrawElementsInstanced(
-		c.GL_TRIANGLES,
-		@intCast(INDICES_SIZE),
-		c.GL_UNSIGNED_INT,
-		null,
-		@intCast(view_count)
-	);
+pub fn render(self: *Self) !void {
+    self.shader.use();
+    c.glBindVertexArray(self.vao);
+    c.glDrawElementsInstanced(
+        c.GL_TRIANGLES,
+        @intCast(INDICES_SIZE),
+        c.GL_UNSIGNED_INT,
+        null,
+        @intCast(self.rectangle_count)
+    );
 }

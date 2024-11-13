@@ -1,6 +1,5 @@
 const c = @cImport({
     @cInclude("glad/glad.h");
-    @cInclude("GLFW/glfw3.h");
 });
 const std = @import("std");
 
@@ -11,7 +10,7 @@ const Self = @This();
 
 program: c_uint,
 
-pub fn init(
+pub fn compile(
     vertex_shader_source: []const u8,
     fragment_shader_source: []const u8,
 ) !Self {
