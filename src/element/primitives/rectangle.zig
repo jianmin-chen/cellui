@@ -227,10 +227,10 @@ pub fn paint(attributes: Attributes) !void {
     const border_right = border_color[1];
     const border_bottom = border_color[2];
     const border_left = border_color[3];
-    const left = styles.left.?;
-    const top = styles.top.?;
-    const width = styles.width.?;
-    const height = styles.height.?;
+    const left = styles.left;
+    const top = styles.top;
+    const width = styles.width;
+    const height = styles.height;
 
     const instance = [_]c.GLfloat{
         left, top, width, height,

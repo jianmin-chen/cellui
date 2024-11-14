@@ -13,6 +13,8 @@ const assert = std.debug.assert;
 
 const Matrix4x4 = math.Matrix4x4;
 
+const ViewStyles = style.ViewStyles;
+
 // An element is essentially an instance of a "view".
 // Checking is done at compile-time by the compiler to ensure that passed types contain:
 // a struct type called `Attributes` that contains a field called `styles`
@@ -25,38 +27,39 @@ const Matrix4x4 = math.Matrix4x4;
 pub fn Element(comptime T: type) type {
     return struct {
         allocator: Allocator = undefined,
-        attributes: *T.Attributes,
+        _attributes: *T.Attributes,
 
         // Surprisingly, this returns a *Node instead of a *Element(T).
         // This effectively erases the type, 
         // and creates a tree given an elements' children.
-        pub fn from(allocator: Allocator, attributes: T.Attributes, children: anytype) !*Node {
+        pub fn from(allocator: Allocator, _attributes: T.Attributes, children: anytype) !*Node {
             const attr = try allocator.create(T.Attributes);
-            attr.* = attributes;
+            attr.* = _attributes;
 
             const element = try allocator.create(Element(T));
             element.* = .{
                 .allocator = allocator,
-                .attributes = attr
+                ._attributes = attr
             };
 
             // Make sure that children is a empty struct if element is a void element;
             // that is, if it can't hold children, e.g. `View(Image)`.
             assert(!(@typeInfo(@TypeOf(children)).Struct.fields.len == 0 and T.is_void_element));
 
-            try element.paint();
-
             return Node.from(allocator, element, children);
         }
 
         pub fn deinit(self: *Element(T)) void {
-            self.allocator.destroy(self.attributes);
+            self.allocator.destroy(self._attributes);
             self.allocator.destroy(self);
         }
 
         pub fn paint(self: *Element(T)) !void {
-            try style.resolve(@ptrCast(&self.attributes.styles));
-            try T.paint(self.attributes.*);
+            try T.paint(self._attributes.*);
+        }
+
+        pub fn styles(self: *Element(T)) *T.Styles {
+            return &self._attributes.styles;
         }
 
         pub fn format(
@@ -75,20 +78,43 @@ pub fn Element(comptime T: type) type {
 
 // This represents a node in a tree, but
 // is also used to wrap around `Element` so
-// we gain two advantages:
+// we get: known compile-time size and type erasure.
 pub const Node = struct {
     const Self = @This();
 
     const VTable = struct {
         deinit: *const fn (ptr: *anyopaque) void,
-        paint: *const fn (ptr: *anyopaque) anyerror!void
+        paint: *const fn (ptr: *anyopaque) anyerror!void,
+        styles: *const fn (ptr: *anyopaque) *anyopaque 
+    };
+
+    // Iterator struct for looping over a node's children.
+    pub const Iterator = struct {
+        it: ?*Self,
+        begin: bool = false,
+
+        pub fn receive(node: *Self) Iterator {
+            return .{
+                .it = node.first_child
+            };
+        }
+
+        pub fn next(self: *Iterator) ?*Self {
+            if (!self.begin) {
+                self.begin = true;
+                return self.it;
+            } else if (self.it) |it| {
+                self.it = it.next;
+                return it.next;
+            } else return null;
+        }
     };
 
     allocator: Allocator,
 
     render_id: usize = 0,
     value: *anyopaque,
-    methods: *const VTable,
+    traits: *const VTable,
 
     next: ?*Self = null,
     previous: ?*Self = null,
@@ -118,15 +144,21 @@ pub const Node = struct {
                 const self: Ptr align(alignment) = @ptrCast(@alignCast(ptr));
                 try self.paint();
             }
+
+            fn styles(ptr: *anyopaque) *anyopaque {
+                const self: Ptr align(alignment) = @ptrCast(@alignCast(ptr));
+                return @ptrCast(self.styles());
+            }
         };
 
         const self = try allocator.create(Self);
         self.* = .{
             .allocator = allocator,
             .value = element,
-            .methods = &.{
+            .traits = &.{
                 .deinit = impl.deinit,
                 .paint = impl.paint,
+                .styles = impl.styles
             }
         };
 
@@ -140,12 +172,22 @@ pub const Node = struct {
     pub fn deinit(self: *Self) void {
         if (self.last_child) |last_child| last_child.deinit();
         if (self.previous) |node| node.deinit();
-        self.methods.deinit(self.value);
+        self.traits.deinit(self.value);
         self.allocator.destroy(self);
     }
 
     pub fn paint(self: *Self) !void {
-        try self.methods.paint(self.value);
+        try self.traits.paint(self.value);
+        var child = self.first_child;
+        while (child) |node| {
+            try node.paint();
+            child = node.next;
+        }
+    }
+
+    pub fn viewStyles(self: *Self) *ViewStyles {
+        const styles: *ViewStyles = @ptrCast(@alignCast(self.traits.styles(self.value)));
+        return styles;
     }
 
     pub fn format(
@@ -154,9 +196,14 @@ pub const Node = struct {
         options: std.fmt.FormatOptions,
         writer: anytype
     ) !void {
+        _ = self;
         _ = fmt;
         _ = options;
-        try writer.print("{any}", .{self.value});
+        try writer.print("node", .{});
+    }
+
+    pub fn iterator(self: *Self) Iterator {
+        return Iterator.receive(self);
     }
 
     pub fn appendChild(self: *Self, child: *Node) !void {

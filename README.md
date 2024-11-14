@@ -19,3 +19,7 @@ Dependencies right now, would love to get rid of some of these:
 * stb_image utilities (`stb_image.h`)
 
 I'd keep Zig libraries in `modules` - able to be used as a dependency by other Zig programs. Everything in `src` is dependent on the contents of `src` or doesn't have a use case isn't well fleshed out for general use case outside the library.
+
+A few more things are needed at the very least for this to be serious:
+
+* A scheduler. Right now, for example, layout is done in one go. It should do a certain amount of tasks in a certain amount of time instead.

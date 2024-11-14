@@ -23,12 +23,13 @@ pub const Rectangle = element.Rectangle;
 pub const color = util.color;
 const ColorPrimitive = color.ColorPrimitive;
 
+const Float = math.Float;
 const Matrix = math.Matrix;
 const Matrix4x4 = math.Matrix4x4;
 
 const Self = @This();
 
-pub const Error = error{ InitializationError };
+pub const Error = error{ InitializationError, InvalidRoot };
 
 pub const Projection = enum { ortho };
 
@@ -111,6 +112,9 @@ pub fn from(
     c.glEnable(c.GL_BLEND);
     c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
+    const width: Float = @floatFromInt(options.initial_width);
+    const height: Float = @floatFromInt(options.initial_height);
+
     var self: Self = .{
         .debug = options.debug, 
 
@@ -124,8 +128,8 @@ pub fn from(
         .projection = switch (options.projection) {
             .ortho => Matrix.ortho(
                 0,
-                @floatFromInt(options.initial_width),
-                @floatFromInt(options.initial_height),
+                width,
+                height,
                 0
             )
         },
@@ -135,10 +139,32 @@ pub fn from(
         .render_stack = ArrayList(View).init(allocator)
     };
 
+    errdefer {
+        self.keys.deinit();
+        self.render_stack.deinit();
+    }
+
     try options.render_stack(&self, &self.render_stack);
 
-    self.root = try paint_root(&self);
-    try layout.calculate();
+    self.root = try Element(Rectangle).from(
+        self.allocator,
+        .{
+            .styles = .{
+                .top = 0,
+                .left = 0,
+                .width = width,
+                .height = height,
+                .position = .absolute
+            }
+        },
+        .{
+            paint_root(&self) catch {
+                return Error.InvalidRoot;
+            }
+        }
+    );
+    try layout.calculate(self.allocator, self.root);
+    try self.root.paint();
 
     return self;
 }
@@ -182,6 +208,7 @@ pub fn launch(self: *Self) !void {
                 self.fps = frames;
                 frames = 0;
                 prev = timestamp;
+                std.debug.print("{any} fps\n", .{self.fps});
             }
         }
 

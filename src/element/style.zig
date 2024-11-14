@@ -20,14 +20,16 @@ pub const FlexDirection = enum { row, column };
 pub const ViewStyles = struct {
     display: Layout = .flex,
     flex_direction: FlexDirection = .column,
-    flex: usize = 0,
-    flex_grow: usize = 0,
+    flex: usize = 1,
+    flex_grow: usize = 1,
     position: Position = .static,
 
-    top: ?Float = null,
-    left: ?Float = null,
-    width: ?Float = null,
-    height: ?Float = null,
+    top: Float = 0,
+    right: Float = 0,
+    bottom: Float = 0,
+    left: Float = 0,
+    width: Float = 0,
+    height: Float = 0,
 
     _background_color: Color = color.default,
     background_color: ?[]const u8 = null,
@@ -56,15 +58,45 @@ pub const ViewStyles = struct {
     margin_bottom: ?f32 = 0,
     margin_left: ?f32 = 0,
 
-    padding: ?f32 = null,
-    padding_top: ?f32 = 0,
-    padding_right: ?f32 = 0,
-    padding_bottom: ?f32 = 0,
-    padding_left: ?f32 = 0,
+    padding: f32 = 0,
+    padding_top: f32 = 0,
+    padding_right: f32 = 0,
+    padding_bottom: f32 = 0,
+    padding_left: f32 = 0,
+    padding_vertical: f32 = 0,
+    padding_horizontal: f32 = 0
 };
 
-pub fn resolve(styles: *ViewStyles) !void {
+pub fn resolve(styles: *ViewStyles) void {
     if (styles.background_color) |background_color| {
-        styles._background_color = try color.parse(background_color);
+        styles._background_color = color.parse(background_color) catch color.default;
     } else styles._background_color = color.default;
+
+    util.cascade(
+        &styles.padding_top,
+        .{styles.padding_vertical / 2.0, styles.padding},
+        0.0,
+        .{}
+    );
+    util.cascade(
+        &styles.padding_right,
+        .{styles.padding_horizontal / 2.0, styles.padding},
+        0.0,
+        .{}
+    );
+    util.cascade(
+        &styles.padding_bottom,
+        .{styles.padding_vertical / 2.0, styles.padding},
+        0.0,
+        .{}
+    );
+    util.cascade(
+        &styles.padding_left,
+        .{styles.padding_horizontal / 2.0, styles.padding},
+        0.0,
+        .{}
+    );
+
+    styles.padding_vertical = styles.padding_top + styles.padding_bottom;
+    styles.padding_horizontal = styles.padding_left + styles.padding_right;
 }
